@@ -575,6 +575,7 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 	GetDlgItem(IDC_BUTTON_SETUP)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow(FALSE);
 
+	// KJD230617 magneto bypass,
 	if (buttonState.Compare(L"Connect") == 0) {
 		// Getting the device index
 		int selectedIdx = deviceList.GetCurSel();
@@ -588,63 +589,31 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 			vector<CString> portList;
 			magneto->searchPortByReg(portList);
 
-			bool result = false;
-			// Check all magneto devices
-			for (int i = 0; i < portList.size(); ++i) {
-				// Getting the serial number from magneto.
-				CString tempPortNumber = portList[i];
-				
-				tempPortNumber.Replace(L"COM", L"");
-				int comPortNumber = _ttoi(tempPortNumber);
+			// Found the same serial number device.
+			CStringA pcrSerial;
+			char serialBuffer[20];
+			pcrSerial.Format("QuPCR%06d", usbSerial);
+			sprintf(serialBuffer, "%s", pcrSerial);
 
-				DriverStatus::Enum res = magneto->connect(comPortNumber);
-
-				if (res == DriverStatus::CONNECTED)
-				{
-					long serialNumber = magneto->getSerialNumber();
-
-					if (serialNumber == usbSerial) {
-						result = true;
-						break;
-					}
-					else {
-						magneto->disconnect();
-					}
-				}
+			if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE)) {
+				AfxMessageBox(L"PCR is failed to connect(Unknown error).");
+				return;
 			}
 
-			if (result) {
-				// Found the same serial number device.
-				CStringA pcrSerial;
-				pcrSerial.Format("QuPCR%06d", usbSerial);
-				char serialBuffer[20];
-				sprintf(serialBuffer, "%s", pcrSerial);
+			// Connection processing
+			isConnected = true;
 
-				BOOL res = device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE);
+			SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Connected");
+			SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
+			GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
 
-				if (res) {
-					// Connection processing
-					isConnected = true;
-					
-					SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Connected");
-					SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
-					GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
+			CString prevTitle;
+			GetWindowText(prevTitle);
+			prevTitle.Format(L"%s - %s", prevTitle, deviceSerial);
+			SetWindowText(prevTitle);
 
-					CString prevTitle;
-					GetWindowText(prevTitle);
-					prevTitle.Format(L"%s - %s", prevTitle, deviceSerial);
-					SetWindowText(prevTitle);
-
-					if (isProtocolLoaded) {
-						GetDlgItem(IDC_BUTTON_START)->EnableWindow();
-					}
-				}
-				else {
-					AfxMessageBox(L"Magneto is connected but PCR is failed to connect(Unknown error).");
-				}
-			}
-			else {
-				AfxMessageBox(L"PCR 과 일치하는 Magneto 장비를 찾을 수 없습니다.");
+			if (isProtocolLoaded) {
+				GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 			}
 		}
 		else {
@@ -654,9 +623,6 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 	}
 	else {
 		isConnected = false;
-		if (magneto->isConnected()) {
-			magneto->disconnect();
-		}
 
 		device->CloseDevice();
 
