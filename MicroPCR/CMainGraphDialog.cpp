@@ -727,8 +727,10 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 
 			clearChartValue();
 
-			magneto->start();
-			SetTimer(Magneto::TimerRuntaskID, Magneto::TimerRuntaskDuration, NULL);
+			// KJD230617 magneto start is not required
+			// magneto->start();
+			// SetTimer(Magneto::TimerRuntaskID, Magneto::TimerRuntaskDuration, NULL);
+			m_Timer->startTimer(TIMER_DURATION, FALSE);//KJD230617 PCR Start
 
 			// Enable stop button
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
