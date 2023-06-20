@@ -735,6 +735,12 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 			findPID();
 
 			clearChartValue();
+			
+			// KBH230621 Clear ResultTable Text
+			int ID_LIST[4] = { IDC_EDIT_CT_FAM, IDC_EDIT_CT_HEX, IDC_EDIT_CT_ROX, IDC_EDIT_CT_CY5 };
+			for (int i = 0; i < 4; i++)
+				SetDlgItemText(ID_LIST[i], L"");
+			RedrawWindow();
 
 			// KJD230617 magneto start is not required
 			// magneto->start();
@@ -1346,6 +1352,10 @@ void CMainGraphDialog::PCREndTask() {
 			if (currentProtocol.useCY5) {
 				setCTValue(dateTime, sensorValuesCy5, resultIndex++, 3);
 			}
+			// KBH230621 Update ResultTable
+			// InvalidateRect(&CRect(149, 309, 156, 72));
+			RedrawWindow(); 
+
 			AfxMessageBox(L"PCR ended!!");
 		}
 		else AfxMessageBox(L"PCR incomplete!!");
@@ -1563,6 +1573,7 @@ void CMainGraphDialog::clearChartValue() {
 	//axis->SetRange(-512, 4096);  // 210118 KBH Y-range lower : 0 -> -512
 
 	//InvalidateRect(&CRect(15, 130, 470, 500));
+	InvalidateRect(&m_graphRect, FALSE); // 211117 KBH static position -> dynamic position 
 	
 }
 
