@@ -73,7 +73,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
 	XTPSkinManager()->SetApplyOptions(XTPSkinManager()->GetApplyOptions() | xtpSkinApplyMetrics);
-	XTPSkinManager()->LoadSkin(m_strStylesPath + _T("QuicksilverR.cjstyles"));
+	XTPSkinManager()->LoadSkin(m_strStylesPath + _T("frcj.cjstyles"));
 
 }
 
@@ -95,7 +95,6 @@ void CMainGraphDialog::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Control(pDX, IDC_COMBO_PROTOCOLS, protocolList);
 	DDX_Control(pDX, IDC_COMBO_DEVICE_LIST, deviceList);
-	DDX_Control(pDX, IDC_PROGRESS_STATUS, progressStatus);
 	// progressStatus
 }
 
@@ -125,7 +124,7 @@ BOOL CMainGraphDialog::OnInitDialog()
 	SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Disconnected");
 	SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Idle..");
 
-	progressStatus.SetRange(0, 100);
+	// KJD230617 progressStatus.SetRange(0, 100);
 
 	SetIcon(m_hIcon, TRUE);	 // set Large Icon
 	SetIcon(m_hIcon, FALSE); // set Small Icon
@@ -162,7 +161,7 @@ void CMainGraphDialog::OnBnClickedButtonSetup()
 	if (res == IDOK) {
 
 		// biomedux setup menu
-		if (passwordDialog.resultType == PASSWORD_RESULT_BIOMEDUX) {
+		if (passwordDialog.resultType == PASSWORD_RESULT_KWELLLABS) {
 			SetupDialog dlg;
 			dlg.DoModal();
 
@@ -203,12 +202,12 @@ void CMainGraphDialog::initChart() {
 	CAxis* axis;
 	axis = m_Chart.AddAxis(kLocationBottom);
 	axis->m_TitleFont.lfWidth = 20;
-	axis->m_TitleFont.lfHeight = 15;
+	axis->m_TitleFont.lfHeight = 20;
 	axis->SetTitle(L"PCR Cycles");
 	axis->SetRange(0, maxCycles);
 	axis = m_Chart.AddAxis(kLocationLeft);
 	axis->m_TitleFont.lfWidth = 20;
-	axis->m_TitleFont.lfHeight = 15;
+	axis->m_TitleFont.lfHeight = 20;
 
 	// 210910 KBH change tick range
 	//axis->SetTitle(L"Sensor Value");
@@ -217,14 +216,22 @@ void CMainGraphDialog::initChart() {
 	//axis->SetRange(-512, 4096);	// 210203 KBH Y-range lower : 0 -> -512
 
 	//210830 KJD Setting Axis and m_Chart
-	axis->SetRange(-100, 2600);
+	// axis->SetRange(-100, 2600);
+	// axis->SetTickCount(5);
+	// axis->m_ytickPos[0] = 0;
+	// axis->m_ytickPos[1] = 500;
+	// axis->m_ytickPos[2] = 1000;
+	// axis->m_ytickPos[3] = 1500;
+	// axis->m_ytickPos[4] = 2000;
+	// axis->m_ytickPos[5] = 2500;
+	axis->SetRange(0, 4096);
 	axis->SetTickCount(5);
 	axis->m_ytickPos[0] = 0;
-	axis->m_ytickPos[1] = 500;
-	axis->m_ytickPos[2] = 1000;
-	axis->m_ytickPos[3] = 1500;
-	axis->m_ytickPos[4] = 2000;
-	axis->m_ytickPos[5] = 2500;
+	axis->m_ytickPos[1] = 1000;
+	axis->m_ytickPos[2] = 2000;
+	axis->m_ytickPos[3] = 3000;
+	axis->m_ytickPos[4] = 4000;
+
 	m_Chart.m_UseMajorVerticalGrids = TRUE;
 	m_Chart.m_UseMajorHorizontalGrids = TRUE;
 	m_Chart.m_MajorGridLineStyle = PS_DOT;
@@ -453,7 +460,7 @@ void CMainGraphDialog::loadMagnetoProtocol() {
 		magneto->generateActionList(treeList);
 
 		int maxActions = magneto->getTotalActionNumber();
-		progressStatus.SetRange(0, maxActions);
+		// KJD230617 progressStatus.SetRange(0, maxActions);
 	}
 }
 
@@ -652,7 +659,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 	
 	// 211117 KBH change dialog (using AfxMessageBox)
 	CString message;
-	message = !isStarted ? L"프로토콜을 시작하겠습니까?" : L"프로토콜을 중지하겠습니까?";
+	message = !isStarted ? L"Want to start the protocol?" : L"Want to stop the protocol?";
 	
 	if (AfxMessageBox(message, MB_YESNO | MB_ICONQUESTION) != IDYES) {
 		return;
@@ -705,7 +712,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 	if (isConnected && isProtocolLoaded) {
 		isStarted = !isStarted;
 		if (isStarted) {
-			progressStatus.SetPos(0);
+			// KJD230617 progressStatus.SetPos(0);
 			GetDlgItem(IDC_COMBO_PROTOCOLS)->EnableWindow(FALSE);
 			GetDlgItem(IDC_BUTTON_SETUP)->EnableWindow(FALSE);
 			GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow(FALSE);
@@ -774,7 +781,7 @@ void CMainGraphDialog::OnTimer(UINT_PTR nIDEvent)
 		}
 
 		// Progress
-		progressStatus.SetPos(magneto->getCurrentActionNumber());
+		// KJD230617 progressStatus.SetPos(magneto->getCurrentActionNumber());
 
 		// Check magneto command
 		if (magneto->getCurrentCmd() == ProtocolCmd::GO) {
@@ -800,7 +807,7 @@ void CMainGraphDialog::OnTimer(UINT_PTR nIDEvent)
 		}
 
 		if (magneto->isIdle()) {
-			progressStatus.SetPos(magneto->getTotalActionNumber());
+			// KJD230617 progressStatus.SetPos(magneto->getTotalActionNumber());
 			KillTimer(Magneto::TimerRuntaskID);
 			SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"PCR in progress...");
 			m_Timer->startTimer(TIMER_DURATION, FALSE);
@@ -1302,7 +1309,7 @@ void CMainGraphDialog::PCREndTask() {
 
 	isStarted = false;
 
-	progressStatus.SetPos(0);
+	// KJD230617 progressStatus.SetPos(0);
 	GetDlgItem(IDC_COMBO_PROTOCOLS)->EnableWindow();
 	GetDlgItem(IDC_BUTTON_SETUP)->EnableWindow();
 	GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow();
@@ -1339,9 +1346,6 @@ void CMainGraphDialog::PCREndTask() {
 			if (currentProtocol.useCY5) {
 				setCTValue(dateTime, sensorValuesCy5, resultIndex++, 3);
 			}
-
-			InvalidateRect(&CRect(226, 655, 456, 768));
-
 			AfxMessageBox(L"PCR ended!!");
 		}
 		else AfxMessageBox(L"PCR incomplete!!");
@@ -1559,7 +1563,7 @@ void CMainGraphDialog::clearChartValue() {
 	//axis->SetRange(-512, 4096);  // 210118 KBH Y-range lower : 0 -> -512
 
 	//InvalidateRect(&CRect(15, 130, 470, 500));
-	InvalidateRect(&m_graphRect, FALSE); // 211117 KBH static position -> dynamic position 
+	
 }
 
 static CString filterTable[4] = { L"FAM", L"HEX", L"ROX", L"CY5" };

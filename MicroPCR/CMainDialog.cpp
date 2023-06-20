@@ -90,7 +90,6 @@ void CMainDialog::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Control(pDX, IDC_COMBO_PROTOCOLS, protocolList);
 	DDX_Control(pDX, IDC_COMBO_DEVICE_LIST, deviceList);
-	DDX_Control(pDX, IDC_PROGRESS_STATUS, progressStatus);
 	// progressStatus
 }
 
@@ -151,7 +150,7 @@ void CMainDialog::OnBnClickedButtonSetup()
 	if (res == IDOK) {
 
 		// biomedux setup menu
-		if (passwordDialog.resultType == PASSWORD_RESULT_BIOMEDUX) {
+		if (passwordDialog.resultType == PASSWORD_RESULT_KWELLLABS) {
 			SetupDialog dlg;
 			dlg.DoModal();
 

@@ -223,6 +223,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\..\..\..\..\logo.png" />
+    <Image Include="res\bioduolab.ico" />
     <Image Include="res\biomedux.ico" />
     <Image Include="res\bitmap1.bmp" />
     <Image Include="res\bitmap2.bmp" />
