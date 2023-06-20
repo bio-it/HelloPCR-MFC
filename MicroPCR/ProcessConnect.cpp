@@ -18,14 +18,6 @@ namespace ProcessConnect
 
 		return utf8Str;
 	}
-	//const char* CStringToUTF8(CString cstring)
-	//{
-	//	CStringA cstr_a(cstring);
-	//	const char* str = cstr_a.GetString();
-	//	string utf8_str(str);
-	//	//cstr_a.ReleaseBuffer();
-	//	return utf8_str.c_str();
-	//}
 
 	Rx_Packet TCP_xfer(Tx_Packet tx_packet)
 	{
