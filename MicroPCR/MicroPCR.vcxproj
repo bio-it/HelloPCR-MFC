@@ -136,6 +136,7 @@
     <ClCompile Include="PasswordDialog.cpp" />
     <ClCompile Include="PIDCreateDlg.cpp" />
     <ClCompile Include="PIDManagerDlg.cpp" />
+    <ClCompile Include="ProcessConnect.cpp" />
     <ClCompile Include="ProgressThread.cpp" />
     <ClCompile Include="ProtocolEditorDialog.cpp" />
     <ClCompile Include="SaveDlg.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="PasswordDialog.h" />
     <ClInclude Include="PIDCreateDlg.h" />
     <ClInclude Include="PIDManagerDlg.h" />
+    <ClInclude Include="ProcessConnect.h" />
     <ClInclude Include="ProgressThread.h" />
     <ClInclude Include="ProtocolEditorDialog.h" />
     <ClInclude Include="Resource.h" />

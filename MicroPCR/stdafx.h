@@ -21,6 +21,8 @@
 
 #include <afxwin.h>         // MFC 핵심 및 표준 구성 요소입니다.
 #include <afxext.h>         // MFC 확장입니다.
+#include <afxsock.h>		// MFC CSocket 
+#include <atlstr.h>
 
 class CMicroPCRDlg;
 extern CMicroPCRDlg* pDlg;
@@ -30,6 +32,7 @@ extern Action *actions;
 
 #include <XTSkinFrameworkPro.h> //Codejock Software Components
 
+#include <string>
 #include <vector>
 #include <algorithm>
 using namespace std;
