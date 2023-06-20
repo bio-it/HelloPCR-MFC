@@ -13,6 +13,7 @@
 #include "FileManager.h"
 #include "ProgressThread.h"
 #include "ConfirmDialog.h"
+#include "ProcessConnect.h"
 
 #include <numeric>
 #include <Dbt.h> // 220325 KBH Device Change Handler
@@ -154,6 +155,7 @@ BOOL CMainGraphDialog::OnInitDialog()
 
 void CMainGraphDialog::OnBnClickedButtonSetup()
 {
+	
 	CPasswordDialog passwordDialog;
 
 	int res = passwordDialog.DoModal();
@@ -1147,16 +1149,22 @@ void CMainGraphDialog::timeTask() {
 
 							// Turn on the led
 							*led = 0;
-
-							// Shot sequence
 							shotCounter++;
-							if (shotCounter >= 2) {
-								// Getting the photodiode data
-								double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
+							if (shotCounter == 2)
+							{
+								ProcessConnect::Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
+							} 
+							// Shot sequence
+							else if (shotCounter > 2) {
+								// KBH230620 photo diode is not used
+								//// Getting the photodiode data
+								// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
+
+								double lights = ProcessConnect::Status();
+								if (lights == -1) return;
 								sensorValues->push_back(lights);
-
 								setChartValue();
-
+								
 								debug.Format(L"filter value : %d, %d, %f\n", photodiode_h, photodiode_l, lights);
 								::OutputDebugString(debug);
 
@@ -1647,8 +1655,8 @@ void CMainGraphDialog::initLog() {
 	CreateDirectory(L"./Record/", NULL);
 
 	CString fileName, fileName2;
-	CTime time = CTime::GetCurrentTime();
-	CString currentTime = time.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
+	startTime = CTime::GetCurrentTime();
+	CString currentTime = startTime.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
 
 	// change file name
 	//fileName = time.Format(L"./Record/%Y%m%d-%H%M-%S.txt");
