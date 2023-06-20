@@ -858,6 +858,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	tx.led_r = ledControl_r;
 	tx.led_g = ledControl_g;
 	tx.led_b = ledControl_b;
+
 	tx.compensation = compensation;
 	tx.currentCycle = currentCycle;
 
@@ -1123,65 +1124,59 @@ void CMainGraphDialog::timeTask() {
 					m_recPDFile.WriteString(values);
 				}
 				else {
-					// Run the filter
-					if (filterRunning) {
-						// Maybe finished..
-						if (magneto->isFilterActionFinished() == false) {
-							int* led;
-							vector<double>* sensorValues;
+					int* led;
+					vector<double>* sensorValues;
 
-							if (filterIndex == 0) {
-								led = &ledControl_b;
-								sensorValues = &sensorValuesFam;
-							}
-							else if (filterIndex == 1) {
-								led = &ledControl_wg;
-								sensorValues = &sensorValuesHex;
-							}
-							else if (filterIndex == 2) {
-								led = &ledControl_g;
-								sensorValues = &sensorValuesRox;
-							}
-							else if (filterIndex == 3) {
-								led = &ledControl_r;
-								sensorValues = &sensorValuesCy5;
-							}
+					if (filterIndex == 0) {
+						led = &ledControl_b;
+						sensorValues = &sensorValuesFam;
+					}
+					else if (filterIndex == 1) {
+						led = &ledControl_wg;
+						sensorValues = &sensorValuesHex;
+					}
+					else if (filterIndex == 2) {
+						led = &ledControl_g;
+						sensorValues = &sensorValuesRox;
+					}
+					else if (filterIndex == 3) {
+						led = &ledControl_r;
+						sensorValues = &sensorValuesCy5;
+					}
 
-							// Turn on the led
-							*led = 0;
-							shotCounter++;
-							if (shotCounter == 2)
-							{
-								ProcessConnect::Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
-							} 
-							// Shot sequence
-							else if (shotCounter > 2) {
-								// KBH230620 photo diode is not used
-								//// Getting the photodiode data
-								// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
+					// Turn on the led
+					*led = 0;
+					shotCounter++;
+					if (shotCounter == 2)
+					{
+						ProcessConnect::Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
+					} 
+					// Shot sequence
+					else if (shotCounter > 2) {
+						// KBH230620 photo diode is not used
+						//// Getting the photodiode data
+						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
 
-								double lights = ProcessConnect::Status();
-								if (lights == -1) return;
-								sensorValues->push_back(lights);
-								setChartValue();
-								
-								debug.Format(L"filter value : %d, %d, %f\n", photodiode_h, photodiode_l, lights);
-								::OutputDebugString(debug);
+						double lights = ProcessConnect::Status();
+						if (lights != -1)
+						{
+							sensorValues->push_back(lights);
 
-								// Turn off led
-								*led = 1;
-								shotCounter = 0;
+							setChartValue();
 
-								// Next filter
-								filterIndex++;
-								filterRunning = false;
-							}
+							debug.Format(L"filter value : %d, %d, %f\n", photodiode_h, photodiode_l, lights);
+							::OutputDebugString(debug);
+
+							// Turn off led
+							*led = 1;
+							shotCounter = 0;
+
+							// Next filter
+							filterIndex++;
+							filterRunning = false;
 						}
 					}
-					else {
-						filterRunning = true;
-						magneto->runFilterAction(filterIndex);
-					}
+					
 					m_currentActionNumber--;	// For checking the shot command 
 				}
 			}
