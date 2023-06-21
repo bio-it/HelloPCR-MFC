@@ -437,8 +437,8 @@ BEGIN
     BEGIN
         BLOCK "041203b5"
         BEGIN
-            VALUE "CompanyName", "Biomedux"
-            VALUE "FileDescription", "LabGenius"
+            VALUE "CompanyName", "Bioduolab"
+            VALUE "FileDescription", "HelloPCR"
             VALUE "FileVersion", "2.0.0.3"
             VALUE "InternalName", "MicroPCR.exe"
             VALUE "LegalCopyright", "TODO: (c) <??? ???>.  All rights reserved."
