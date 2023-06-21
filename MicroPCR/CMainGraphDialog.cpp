@@ -1137,35 +1137,35 @@ void CMainGraphDialog::timeTask() {
 					m_recPDFile.WriteString(values);
 				}
 				else {
-					int* led;
+					// int* led; KBH230621 Delete LED control
 					vector<double>* sensorValues;
 
 					if (filterIndex == 0) {
-						led = &ledControl_b;
+						// led = &ledControl_b;
 						sensorValues = &sensorValuesFam;
 					}
 					else if (filterIndex == 1) {
-						led = &ledControl_wg;
+						// led = &ledControl_wg;
 						sensorValues = &sensorValuesHex;
 					}
 					else if (filterIndex == 2) {
-						led = &ledControl_g;
+						// led = &ledControl_g;
 						sensorValues = &sensorValuesRox;
 					}
 					else if (filterIndex == 3) {
-						led = &ledControl_r;
+						// led = &ledControl_r;
 						sensorValues = &sensorValuesCy5;
 					}
 
 					// Turn on the led
-					*led = 0;
+					// *led = 0;
 					shotCounter++;
-					if (shotCounter == 2)
+					if (shotCounter == 1)
 					{
 						ProcessConnect::Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
 					} 
 					// Shot sequence
-					else if (shotCounter > 2) {
+					else if (shotCounter >= 2) {
 						// KBH230620 photo diode is not used
 						//// Getting the photodiode data
 						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
@@ -1177,16 +1177,16 @@ void CMainGraphDialog::timeTask() {
 
 							setChartValue();
 
-							debug.Format(L"filter value : %d, %d, %f\n", photodiode_h, photodiode_l, lights);
-							::OutputDebugString(debug);
+							// debug.Format(L"filter value : %d, %d, %f\n", photodiode_h, photodiode_l, lights);
+							// ::OutputDebugString(debug);
 
 							// Turn off led
-							*led = 1;
+							// 	*led = 1;
 							shotCounter = 0;
 
 							// Next filter
 							filterIndex++;
-							filterRunning = false;
+							// filterRunning = false;
 						}
 					}
 					
