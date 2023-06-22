@@ -205,7 +205,7 @@ namespace FileManager
 
 		pids.clear();
 
-		if (file.Open(L"./Labgenius.data", CFile::modeRead))
+		if (file.Open(L"./HelloPCR.data", CFile::modeRead))
 		{
 			CArchive ar(&file, CArchive::load);
 			float startTemp = 0, targetTemp = 0, kp = 0, ki = 0, kd = 0;
@@ -246,7 +246,7 @@ namespace FileManager
 		CFile file;
 		bool res = false;
 
-		file.Open(L"./Labgenius.data", CFile::modeCreate | CFile::modeWrite);
+		file.Open(L"./HelloPCR.data", CFile::modeCreate | CFile::modeWrite);
 		CArchive ar(&file, CArchive::store);
 		CString version = VERSION_CONSTANTS;
 
