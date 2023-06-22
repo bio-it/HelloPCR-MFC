@@ -441,15 +441,7 @@ void CMainGraphDialog::loadProtocolList() {
 		AfxMessageBox(L"You need to make the protocol first.");
 	}
 }
-void CMainGraphDialog::initState()
-{
-	GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
-	if (!magneto->isIdle()) {
-		magneto->stop();
-	}
-	
-	KillTimer(Magneto::TimerRuntaskID);
-}
+
 void CMainGraphDialog::loadMagnetoProtocol() {
 	// Getting the magneto data and check magneto data
 	CString magnetoProtocolRes = magneto->loadProtocolFromData(currentProtocol.magnetoData);
@@ -753,93 +745,22 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 		}
 		else {
 			PCREndTask();
+
+			// KJD remove cleanupTask function calling
+			// Stop the magneto if running
+			
+			// if (!magneto->isIdle()) {
+			// 	magneto->stop();
+			// }
+
+			// cleanupTask();
+
+			// KillTimer(Magneto::TimerRuntaskID);
 		}
 	}
 	else {
 		AfxMessageBox(L"Error occured!");
 	}
-}
-
-void CMainGraphDialog::OnTimer(UINT_PTR nIDEvent)
-{
-	if (nIDEvent == Magneto::TimerRuntaskID)
-	{
-		if (!magneto->runTask()) {
-			KillTimer(Magneto::TimerRuntaskID);
-			// 210119 KBH remove unused code 
-			//AfxMessageBox(L"Limit 스위치가 설정되어 task 가 종료되었습니다.\n기기를 확인하세요.");
-
-			// 210119 KBH Motor Stucked
-			AfxMessageBox(L"motor가 stuck 되었습니다.\n기기를 확인하세요.");
-			
-			exit(0); // 211117 KBH if motor is stuck, program exit
-			//initState();	// 210120 KBH state initialize 
-			
-			return;
-		}
-
-		// Progress
-		// KJD230617 progressStatus.SetPos(magneto->getCurrentActionNumber());
-
-		// Check magneto command
-		if (magneto->getCurrentCmd() == ProtocolCmd::GO) {
-			if (magneto->getCurrentfilter() == 1) {
-				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Washing 1...");
-			}
-			else if (magneto->getCurrentfilter() == 2) {
-				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Washing 2...");
-			}
-			else if (magneto->getCurrentfilter() == 5) {
-				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Elution...");
-			}
-			else if (magneto->getCurrentfilter() == 6) {
-				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Lysis...");
-			}
-//			210118 KBH remobe progress status "Mixing"
-//			else if (magneto->getCurrentfilter() == 10) {
-//				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Mixing...");
-//			}
-			else if (magneto->getCurrentfilter() == 12) {
-				SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"Moving to PCR...");
-			}
-		}
-
-		if (magneto->isIdle()) {
-			// KJD230617 progressStatus.SetPos(magneto->getTotalActionNumber());
-			KillTimer(Magneto::TimerRuntaskID);
-			SetDlgItemText(IDC_STATIC_PROGRESS_STATUS, L"PCR in progress...");
-			m_Timer->startTimer(TIMER_DURATION, FALSE);
-			return;
-		}
-	}
-	else if (nIDEvent == Magneto::TimerCleanupTaskID) {
-		// 220215 KBH Remove home task in CleanupTask
-		//if (!magneto->runTask()) {
-		//	// 211119 KBH Timer kill CleanupTask
-		//	//KillTimer(Magneto::TimerRuntaskID); 
-		//	KillTimer(Magneto::TimerCleanupTaskID);
-		//	// 210119 KBH remove unused code 
-		//	//AfxMessageBox(L"Limit 스위치가 설정되어 task 가 종료되었습니다.\n기기를 확인하세요.");
-
-		//	// 210119 KBH Motor Stucked
-		//	AfxMessageBox(L"motor가 stuck 되었습니다.\n기기를 확인하세요.");
-
-		//	exit(0); // 211117 KBH if motor is stuck, program exit
-		//	//initState();	// 210120 KBH state initialize 
-		//	
-		//	return;
-		//}
-
-		if (magneto->isIdle()) {
-			KillTimer(Magneto::TimerCleanupTaskID);
-			PCREndTask();
-			// Reload original magneto protocol
-			loadMagnetoProtocol();
-			return;
-		}
-	}
-
-	CDialogEx::OnTimer(nIDEvent);
 }
 
 LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
@@ -945,6 +866,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		onceShow = false;
 		emergencyStop = true;
 		PCREndTask();// KJD 
+		// KJD cleanupTask();
 	}
 
 	// logging
@@ -1066,6 +988,7 @@ void CMainGraphDialog::timeTask() {
 			{
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
+				
 				PCREndTask(); // KJD230622 call PCREndTask function
 				return;
 			}
@@ -1230,7 +1153,7 @@ void CMainGraphDialog::timeTask() {
 				if (m_timeOut == 0)
 				{
 					AfxMessageBox(L"The target temperature cannot be reached!!");
-					PCREndTask(); // KJD230622 call PCREndTask function
+					PCREndTask();
 				}
 			}
 			else {

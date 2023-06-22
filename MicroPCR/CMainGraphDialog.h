@@ -53,7 +53,6 @@ private:
 	void initPCRDevices();
 	void initConnection();
 	void initResultTable();
-	void initState();	// 210120 KBH initialize state 
 
 	bool isProtocolLoaded;
 	bool isConnected;
@@ -151,7 +150,6 @@ public:
 	afx_msg void OnLbnSelchangeComboProtocols();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	afx_msg void OnBnClickedButtonConnect();
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	virtual LRESULT OnmmTimer(WPARAM wParam, LPARAM lParam);
 
 	afx_msg void OnBnClickedButtonFilterFam();
