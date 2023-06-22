@@ -448,8 +448,6 @@ void CMainGraphDialog::initState()
 		magneto->stop();
 	}
 	
-	cleanupTask();
-
 	KillTimer(Magneto::TimerRuntaskID);
 }
 void CMainGraphDialog::loadMagnetoProtocol() {
@@ -754,16 +752,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
 		}
 		else {
-			// PCREndTask();
-			// Stop the magneto if running
-			
-			if (!magneto->isIdle()) {
-				magneto->stop();
-			}
-
-			cleanupTask();
-
-			KillTimer(Magneto::TimerRuntaskID);
+			PCREndTask();
 		}
 	}
 	else {
@@ -955,8 +944,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	else if (rx.currentError == ERROR_OVERHEAT && onceShow) {
 		onceShow = false;
 		emergencyStop = true;
-		// PCREndTask();
-		cleanupTask();
+		PCREndTask();// KJD 
 	}
 
 	// logging
@@ -1078,8 +1066,7 @@ void CMainGraphDialog::timeTask() {
 			{
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
-				// PCREndTask();
-				cleanupTask();
+				PCREndTask(); // KJD230622 call PCREndTask function
 				return;
 			}
 
@@ -1243,8 +1230,7 @@ void CMainGraphDialog::timeTask() {
 				if (m_timeOut == 0)
 				{
 					AfxMessageBox(L"The target temperature cannot be reached!!");
-					// PCREndTask();
-					cleanupTask();
+					PCREndTask(); // KJD230622 call PCREndTask function
 				}
 			}
 			else {
@@ -1263,28 +1249,6 @@ void CMainGraphDialog::timeTask() {
 			}
 		}
 	}
-}
-
-void CMainGraphDialog::cleanupTask() {
-	// Stop timer
-	m_Timer->stopTimer();
-
-	// 210120 KBH Magneto AlarmReset
-	magneto->Alarmreset();	
-
-	// 220111 KBH disk & syringe motors not homing after PCR protocol is over
-	// Start cleanup timer
-	// Setting the home command
-	// CString magnetoProtocolRes = magneto->loadProtocolFromData(L"home");
-
-	// if (magneto->isCompileSuccess(magnetoProtocolRes)) {
-	// 	// initialize the protocol
-	// 	vector<ActionBeans> treeList;
-	// 	magneto->generateActionList(treeList);
-	// }
-
-	// magneto->start();
-	SetTimer(Magneto::TimerCleanupTaskID, Magneto::TimerCleanupTaskDuration, NULL);
 }
 
 void CMainGraphDialog::PCREndTask() {

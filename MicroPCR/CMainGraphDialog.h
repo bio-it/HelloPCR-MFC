@@ -102,7 +102,6 @@ private:
 	void loadConstants();
 	void initValues();
 	void timeTask();
-	void cleanupTask();
 	void PCREndTask();
 
 	int currentCycle;
