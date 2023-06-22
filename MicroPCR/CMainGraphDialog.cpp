@@ -742,6 +742,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 			int ID_LIST[4] = { IDC_EDIT_CT_FAM, IDC_EDIT_CT_HEX, IDC_EDIT_CT_ROX, IDC_EDIT_CT_CY5 };
 			for (int i = 0; i < 4; i++)
 				SetDlgItemText(ID_LIST[i], L"");
+			initResultTable();
 			RedrawWindow();
 
 			// KJD230617 magneto start is not required
