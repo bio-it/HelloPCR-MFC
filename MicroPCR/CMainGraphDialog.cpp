@@ -73,7 +73,6 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 
 	XTPSkinManager()->SetApplyOptions(XTPSkinManager()->GetApplyOptions() | xtpSkinApplyMetrics);
 	XTPSkinManager()->LoadSkin(m_strStylesPath + _T("frcj.cjstyles"));
-
 }
 
 CMainGraphDialog::~CMainGraphDialog()
@@ -82,6 +81,9 @@ CMainGraphDialog::~CMainGraphDialog()
 		delete device;
 	if (m_Timer != NULL)
 		delete m_Timer;
+
+	// Process Stop HelloPCR-Runner.exe 
+	ProcessConnect::StopProcess();
 }
 
 void CMainGraphDialog::DoDataExchange(CDataExchange* pDX)
@@ -575,6 +577,9 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 			if (isProtocolLoaded) {
 				GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 			}
+
+			// Process Start HelloPCR-Runner.exe 
+			ProcessConnect::StartProcess(usbSerial);
 		}
 		else {
 			AfxMessageBox(L"Please select the device first.");
@@ -595,6 +600,9 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 		SetDlgItemText(IDC_BUTTON_CONNECT, L"Connect");
 		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow();
 		GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
+
+		// Process Stop HelloPCR-Runner.exe 
+		ProcessConnect::StopProcess();
 	}
 
 	GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow(TRUE);
