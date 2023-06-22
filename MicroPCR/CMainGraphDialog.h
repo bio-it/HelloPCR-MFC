@@ -3,7 +3,6 @@
 #include "Chart.h"
 #include "mmtimers.h"
 
-#include "Magneto.h"
 #include "DeviceConnect.h"
 
 #include ".\gridctrl_src\gridctrl.h"
@@ -21,7 +20,6 @@ private:
 	HICON m_hIcon;
 	CMMTimers* m_Timer;
 	CDeviceConnect* device;
-	CMagneto* magneto;
 
 	CGridCtrl resultTable;
 	CXYChart m_Chart;
@@ -47,7 +45,6 @@ private:
 	CBitmap cy5Img;
 
 	void loadProtocolList();
-	void loadMagnetoProtocol();
 
 	void calcTotalTime();
 	void initPCRDevices();
@@ -57,8 +54,6 @@ private:
 	bool isProtocolLoaded;
 	bool isConnected;
 	bool isStarted;
-
-	int magnetoProtocolIdx;
 
 	int currentCmd;
 	bool isFanOn, isLedOn;

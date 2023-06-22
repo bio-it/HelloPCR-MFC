@@ -28,7 +28,6 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, isProtocolLoaded(false)
 	, isConnected(false)
 	, isStarted(false)
-	, magnetoProtocolIdx(0)
 	, isFirstDraw(false)
 	, isCompletePCR(false)
 	, isTargetArrival(false)
@@ -83,8 +82,6 @@ CMainGraphDialog::~CMainGraphDialog()
 		delete device;
 	if (m_Timer != NULL)
 		delete m_Timer;
-	if (magneto != NULL)
-		delete magneto;
 }
 
 void CMainGraphDialog::DoDataExchange(CDataExchange* pDX)
@@ -433,26 +430,9 @@ void CMainGraphDialog::loadProtocolList() {
 		if (isConnected) {
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 		}
-
-		// Getting the magneto data and check magneto data
-		loadMagnetoProtocol();
 	}
 	else {
 		AfxMessageBox(L"You need to make the protocol first.");
-	}
-}
-
-void CMainGraphDialog::loadMagnetoProtocol() {
-	// Getting the magneto data and check magneto data
-	CString magnetoProtocolRes = magneto->loadProtocolFromData(currentProtocol.magnetoData);
-
-	if (magneto->isCompileSuccess(magnetoProtocolRes)) {
-		// initialize the protocol
-		vector<ActionBeans> treeList;
-		magneto->generateActionList(treeList);
-
-		int maxActions = magneto->getTotalActionNumber();
-		// KJD230617 progressStatus.SetRange(0, maxActions);
 	}
 }
 
@@ -487,8 +467,6 @@ void CMainGraphDialog::OnLbnSelchangeComboProtocols() {
 	currentProtocol = protocols[selectedIdx];
 	initProtocol();
 	initResultTable();
-
-	loadMagnetoProtocol();
 }
 
 void CMainGraphDialog::calcTotalTime() {
@@ -548,7 +526,6 @@ void CMainGraphDialog::calcTotalTime() {
 void CMainGraphDialog::initConnection() {
 	m_Timer = new CMMTimers(1, GetSafeHwnd());
 	device = new CDeviceConnect(GetSafeHwnd());
-	magneto = new CMagneto();
 }
 
 void CMainGraphDialog::initPCRDevices() {
@@ -585,10 +562,6 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 			CString deviceSerial;
 			deviceList.GetLBText(selectedIdx, deviceSerial);
 			int usbSerial = _ttoi(deviceSerial);
-
-			// Getting the com port list
-			vector<CString> portList;
-			magneto->searchPortByReg(portList);
 
 			// Found the same serial number device.
 			CStringA pcrSerial;
@@ -644,11 +617,6 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 
 void CMainGraphDialog::OnBnClickedButtonStart()
 {
-	if (!magneto->isCompileEnded()) {
-		AfxMessageBox(L"Magneto data is not exist. Please setting the magneto protocol.");
-		return;
-	}
-	
 	// 211117 KBH change dialog (using AfxMessageBox)
 	CString message;
 	message = !isStarted ? L"Want to start the protocol?" : L"Want to stop the protocol?";
@@ -762,6 +730,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 		AfxMessageBox(L"Error occured!");
 	}
 }
+
 
 LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	if (isStarted)
@@ -940,7 +909,6 @@ void CMainGraphDialog::initValues() {
 		currentCmd = CMD_PCR_STOP;
 	}
 
-	magnetoProtocolIdx = 0;
 	m_currentActionNumber = -1;
 	m_leftGotoCount = -1;
 	leftSec = 0;
@@ -1175,6 +1143,8 @@ void CMainGraphDialog::timeTask() {
 }
 
 void CMainGraphDialog::PCREndTask() {
+	m_Timer->stopTimer();
+
 	while (true)
 	{
 		RxBuffer rx;
@@ -1551,7 +1521,7 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 
 // 200804 KBH change log file name 
 void CMainGraphDialog::initLog() {
-	long serialNumber = magneto->getSerialNumber();
+	long serialNumber = 4;
 	CreateDirectory(L"./Record/", NULL);
 
 	CString fileName, fileName2;
