@@ -38,7 +38,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, m_ki(0.0)
 	, m_kd(0.0)
 	, m_cArrivalDelta(0.5)
-	, maxCycles(40)
+	, maxCycles(45)
 	, compensation(0)
 	, integralMax(INTGRALMAX)
 	, displayDelta(0.0f)
@@ -205,6 +205,8 @@ void CMainGraphDialog::initChart() {
 	axis->m_TitleFont.lfHeight = 20;
 	axis->SetTitle(L"PCR Cycles");
 	axis->SetRange(0, maxCycles);
+	axis->SetTickCount(8); // KBH230622 Setting X-Axis Major Ticks 
+
 	axis = m_Chart.AddAxis(kLocationLeft);
 	axis->m_TitleFont.lfWidth = 20;
 	axis->m_TitleFont.lfHeight = 20;
@@ -224,7 +226,7 @@ void CMainGraphDialog::initChart() {
 	// axis->m_ytickPos[3] = 1500;
 	// axis->m_ytickPos[4] = 2000;
 	// axis->m_ytickPos[5] = 2500;
-	axis->SetRange(0, 4096);
+	axis->SetRange(-200, 4096);
 	axis->SetTickCount(5);
 	axis->m_ytickPos[0] = 0;
 	axis->m_ytickPos[1] = 1000;
