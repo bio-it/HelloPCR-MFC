@@ -208,21 +208,7 @@ void CMainGraphDialog::initChart() {
 	axis->m_TitleFont.lfWidth = 20;
 	axis->m_TitleFont.lfHeight = 20;
 
-	// 210910 KBH change tick range
-	//axis->SetTitle(L"Sensor Value");
-
-	//axis->SetTickCount(8); // 210203 KBH tick count : 8
-	//axis->SetRange(-512, 4096);	// 210203 KBH Y-range lower : 0 -> -512
-
 	//210830 KJD Setting Axis and m_Chart
-	// axis->SetRange(-100, 2600);
-	// axis->SetTickCount(5);
-	// axis->m_ytickPos[0] = 0;
-	// axis->m_ytickPos[1] = 500;
-	// axis->m_ytickPos[2] = 1000;
-	// axis->m_ytickPos[3] = 1500;
-	// axis->m_ytickPos[4] = 2000;
-	// axis->m_ytickPos[5] = 2500;
 	axis->SetRange(-200, 4096);
 	axis->SetTickCount(5);
 	axis->m_ytickPos[0] = 0;
@@ -713,17 +699,6 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 		}
 		else {
 			PCREndTask();
-
-			// KJD remove cleanupTask function calling
-			// Stop the magneto if running
-			
-			// if (!magneto->isIdle()) {
-			// 	magneto->stop();
-			// }
-
-			// cleanupTask();
-
-			// KillTimer(Magneto::TimerRuntaskID);
 		}
 	}
 	else {
@@ -835,7 +810,6 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		onceShow = false;
 		emergencyStop = true;
 		PCREndTask();// KJD 
-		// KJD cleanupTask();
 	}
 
 	// logging
@@ -845,36 +819,6 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		recordingCount++;
 		values.Format(L"%6d	%8.0f	%3.1f\n", recordingCount, currentTime, currentTemp);
 		m_recFile.WriteString(values);
-
-		// for log message per 1 sec
-		/*
-		if (recordingCount % 20 == 0) {
-			int elapsed_time = (int)((double)(timeGetTime() - recStartTime) / 1000.);
-			int min = elapsed_time / 60;
-			int sec = elapsed_time % 60;
-			CString elapseTime, lineTime, totalTime;
-			elapseTime.Format(L"%dm %ds", min, sec);
-
-			min = leftSec / 60;
-			sec = leftSec % 60;
-
-			// current left protocol time
-			if (min == 0)
-				lineTime.Format(L"%ds", sec);
-			else
-				lineTime.Format(L"%dm %ds", min, sec);
-
-			CString tempStr;
-			tempStr.Format(L"%3.1f", currentTemp);
-
-			double lights = (double)(photodiode_h & 0x0f)*256. + (double)(photodiode_l);
-
-			CString log;
-			log.Format(L"cmd: %d, targetTemp: %3.1f, temp: %s, elapsed time: %s, line Time: %s, protocol Time: %s, device TargetArr: %d, mfc TargetArr: %d, free Running: %d, free Running Counter: %d, ArrivalDelta: %3.1f, tempFlag: %d, photodiode: %3.1f\n",
-				currentCmd, m_currentTargetTemp, tempStr, elapseTime, lineTime, totalTime, (int)rx.targetArrival, (int)isTargetArrival, (int)freeRunning, (int)freeRunningCounter, m_cArrivalDelta, (int)targetTempFlag, lights);
-			FileManager::log(log);
-		}
-		*/
 	}
 
 	return FALSE;
