@@ -4,7 +4,6 @@
 
 namespace ProcessConnect 
 {
-
 	string CStringToUTF8(CString cstr)
 	{
 		int utf8Length = WideCharToMultiByte(CP_UTF8, 0, cstr, -1, nullptr, 0, nullptr, nullptr);
@@ -71,5 +70,23 @@ namespace ProcessConnect
 		tx_packet.Command = CMD_STATUS;
 		Rx_Packet rx_packet = TCP_xfer(tx_packet);
 		return rx_packet.Intensity;
+	}
+
+	void StartProcess(long serial_number)
+	{
+		CString command;
+		command.Format(L"./HelloPCR-runner.exe HelloPCR%05ld", serial_number);
+#ifdef EMULATOR
+		command.Format(L"./HelloPCR-runner.exe -E HelloPCR%05ld", serial_number);
+#endif
+		ShellExecute(NULL, L"open", command, NULL, L"./", SW_SHOW);
+	}
+
+	void StopProcess()
+	{
+		Tx_Packet tx_packet;
+		memset(&tx_packet, 0, sizeof(Tx_Packet));
+		tx_packet.Command = CMD_EXIT;
+		Rx_Packet rx_packet = TCP_xfer(tx_packet);
 	}
 }

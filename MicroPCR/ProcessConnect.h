@@ -41,5 +41,7 @@ namespace ProcessConnect
 	Rx_Packet TCP_xfer(Tx_Packet tx_packet);
 	int Shot(int filter_index, int current_cycle, CString start_time);
 	int Status();
+	void StartProcess(long serial_number);
+	void StopProcess();
 };
 
