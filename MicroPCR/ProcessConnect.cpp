@@ -74,12 +74,14 @@ namespace ProcessConnect
 
 	void StartProcess(long serial_number)
 	{
-		CString command;
-		command.Format(L"./HelloPCR-runner.exe HelloPCR%05ld", serial_number);
+		int mode = SW_HIDE;
+		CString arguments;
+		arguments.Format(L"%05ld", serial_number);
 #ifdef EMULATOR
-		command.Format(L"./HelloPCR-runner.exe -E HelloPCR%05ld", serial_number);
+		mode = SW_SHOW;
+		arguments.Format(L"-E %05ld", serial_number);
 #endif
-		ShellExecute(NULL, L"open", command, NULL, L"./", SW_SHOW);
+		ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe",arguments ,NULL, mode);
 	}
 
 	void StopProcess()
