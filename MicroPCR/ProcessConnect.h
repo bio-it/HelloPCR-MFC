@@ -9,6 +9,10 @@ namespace ProcessConnect
 	{
 		CMD_STATUS = 0x00,
 		CMD_SHOT = 0x01,
+		CMD_IDLE = 0x02,
+		CMD_CYCLING = 0x03,
+		CMD_ERROR = 0x04,
+		CMD_EXIT = 0xFF
 	} Command;
 	typedef enum _FILTERINDEX
 	{
@@ -32,6 +36,7 @@ namespace ProcessConnect
 		char reserved[508];
 	} Rx_Packet;
 
+	
 	string CStringToUTF8(CString cstring);
 	Rx_Packet TCP_xfer(Tx_Packet tx_packet);
 	int Shot(int filter_index, int current_cycle, CString start_time);
