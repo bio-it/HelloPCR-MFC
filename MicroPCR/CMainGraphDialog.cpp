@@ -668,7 +668,7 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 			// KJD230617 magneto start is not required
 			// magneto->start();
 			// SetTimer(Magneto::TimerRuntaskID, Magneto::TimerRuntaskDuration, NULL);
-			m_Timer->startTimer(TIMER_DURATION, FALSE);//KJD230617 PCR Start
+			// m_Timer->startTimer(TIMER_DURATION, FALSE);//KJD230617 PCR Start
 
 			// Enable stop button
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
@@ -789,7 +789,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	}
 
 	// logging
-	if (!logStopped) {
+	if (!logStopped && isStarted) {
 		CString values;
 		double currentTime = (double)(timeGetTime() - recStartTime);
 		recordingCount++;
