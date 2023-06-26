@@ -1,2 +1,3 @@
 # HelloPCR
-- new Camera Chip based qPCR System GUI 
+- new Chip bsed qPCR System using Camera
+- MFC GUI Program
