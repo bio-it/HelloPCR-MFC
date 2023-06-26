@@ -7,12 +7,12 @@ namespace ProcessConnect
 {
 	typedef enum _Command
 	{
-		CMD_STATUS = 0x00,
-		CMD_SHOT = 0x01,
-		CMD_IDLE = 0x02,
-		CMD_CYCLING = 0x03,
-		CMD_ERROR = 0x04,
-		CMD_EXIT = 0xFF
+		CMD_STATUS		= 0x00,
+		CMD_SHOT		= 0x01,
+		CMD_LED_READY	= 0x02,
+		CMD_LED_RUN		= 0x03,
+		CMD_LED_ERROR	= 0x04,
+		CMD_EXIT		= 0xFF
 	} Command;
 	typedef enum _FILTERINDEX
 	{
