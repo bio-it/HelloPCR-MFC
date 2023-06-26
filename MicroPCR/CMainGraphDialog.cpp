@@ -577,7 +577,8 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 			if (isProtocolLoaded) {
 				GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 			}
-
+			// KBH230623 Start Timer when device connected
+			m_Timer->startTimer(TIMER_DURATION, FALSE);
 			// Process Start HelloPCR-Runner.exe 
 			ProcessConnect::StartProcess(usbSerial);
 		}
@@ -600,6 +601,9 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 		SetDlgItemText(IDC_BUTTON_CONNECT, L"Connect");
 		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow();
 		GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
+
+		// KBH230623 Stop Timer when device disconnected
+		m_Timer->stopTimer();
 
 		// Process Stop HelloPCR-Runner.exe 
 		ProcessConnect::StopProcess();
@@ -624,42 +628,6 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 // 220111 KBH changed iteration count from 5 to 20 (waiting time is changed from 250ms to 1000ms)
 // (20번째 read_buffer 에 온도 값이 10도 이하일 경우 PCR Chip Connection Error)
 // change the position of sleep function
-#ifndef EMULATOR
-	if (!isStarted)
-	{
-		float currentTemp;
-
-		for (int i = 0; i < 20; ++i)
-		{
-			RxBuffer rx;
-			TxBuffer tx;
-			currentTemp = 0.0f;
-
-			memset(&rx, 0, sizeof(RxBuffer));
-			memset(&tx, 0, sizeof(TxBuffer));
-
-			tx.cmd = CMD_READY;
-
-			BYTE senddata[65] = { 0, };
-			BYTE readdata[65] = { 0, };
-			memcpy(senddata, &tx, sizeof(TxBuffer));
-
-			device->Write(senddata);
-			Sleep(TIMER_DURATION);
-			device->Read(&rx);
-
-			memcpy(readdata, &rx, sizeof(RxBuffer));
-			memcpy(&currentTemp, &(rx.chamber_temp_1), sizeof(float));
-		}
-		if (currentTemp < 10.0f)
-		{
-			message = L"Low temperature! Chip connection check!";
-			AfxMessageBox(message);
-			return;
-		}
-	}
-#endif
-
 	// Disable start button
 	GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
 
@@ -1095,8 +1063,6 @@ void CMainGraphDialog::timeTask() {
 }
 
 void CMainGraphDialog::PCREndTask() {
-	m_Timer->stopTimer();
-
 	while (true)
 	{
 		RxBuffer rx;
