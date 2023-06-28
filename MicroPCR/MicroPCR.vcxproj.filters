@@ -165,7 +165,7 @@
     <ClCompile Include="ProgressThread.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ProcessConnect.cpp">
+    <ClCompile Include="ServerProcess.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -326,7 +326,7 @@
     <ClInclude Include="ProgressThread.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="ProcessConnect.h">
+    <ClInclude Include="ServerProcess.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

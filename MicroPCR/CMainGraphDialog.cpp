@@ -13,7 +13,6 @@
 #include "FileManager.h"
 #include "ProgressThread.h"
 #include "ConfirmDialog.h"
-#include "ProcessConnect.h"
 
 #include <numeric>
 #include <Dbt.h> // 220325 KBH Device Change Handler
@@ -68,6 +67,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, useCy5(false)
 	, m_strStylesPath(L"./")
 	, isConnectionBroken(false)
+	, server_process()
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -83,7 +83,7 @@ CMainGraphDialog::~CMainGraphDialog()
 		delete m_Timer;
 
 	// Process Stop HelloPCR-Runner.exe 
-	ProcessConnect::StopProcess();
+	server_process.StopProcess();
 }
 
 void CMainGraphDialog::DoDataExchange(CDataExchange* pDX)
@@ -580,7 +580,7 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 			// KBH230623 Start Timer when device connected
 			m_Timer->startTimer(TIMER_DURATION, FALSE);
 			// Process Start HelloPCR-Runner.exe 
-			ProcessConnect::StartProcess(usbSerial);
+			server_process.StartProcess(usbSerial);
 		}
 		else {
 			AfxMessageBox(L"Please select the device first.");
@@ -606,7 +606,7 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 		m_Timer->stopTimer();
 
 		// Process Stop HelloPCR-Runner.exe 
-		ProcessConnect::StopProcess();
+		server_process.StopProcess();
 	}
 
 	GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow(TRUE);
@@ -963,7 +963,7 @@ void CMainGraphDialog::timeTask() {
 					shotCounter++;
 					if (shotCounter == 1)
 					{
-						ProcessConnect::Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
+						server_process.Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
 					} 
 					// Shot sequence
 					else if (shotCounter >= 2) {
@@ -971,7 +971,7 @@ void CMainGraphDialog::timeTask() {
 						//// Getting the photodiode data
 						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
 
-						double lights = ProcessConnect::Status();
+						double lights = server_process.Status();
 						if (lights != -1)
 						{
 							sensorValues->push_back(lights);
