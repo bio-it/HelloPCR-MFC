@@ -68,6 +68,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, m_strStylesPath(L"./")
 	, isConnectionBroken(false)
 	, server_process()
+	, usbSerial(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -518,13 +519,14 @@ void CMainGraphDialog::initConnection() {
 
 void CMainGraphDialog::initPCRDevices() {
 	deviceList.ResetContent();
-
+	
 	int deviceNums = device->GetDevices();
+	
 	for (int i = 0; i < deviceNums; ++i) {
 		CString deviceSerial = device->GetDeviceSerial(i);
 
 		// Remove the QuPCR string
-		deviceList.AddString(deviceSerial.Mid(5));
+		deviceList.AddString(deviceSerial.Mid(8));
 	}
 
 	if (deviceList.GetCount() != 0) {
@@ -549,12 +551,12 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 		if (selectedIdx != -1) {
 			CString deviceSerial;
 			deviceList.GetLBText(selectedIdx, deviceSerial);
-			int usbSerial = _ttoi(deviceSerial);
+			usbSerial = _ttoi(deviceSerial); // KBH230629 connected PCR device serial number 
 
 			// Found the same serial number device.
 			CStringA pcrSerial;
 			char serialBuffer[20];
-			pcrSerial.Format("QuPCR%06d", usbSerial);
+			pcrSerial.Format("HelloPCR%05d", usbSerial);
 			sprintf(serialBuffer, "%s", pcrSerial);
 
 			if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE)) {
@@ -876,7 +878,6 @@ void CMainGraphDialog::timeTask() {
 			{
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
-				
 				PCREndTask(); // KJD230622 call PCREndTask function
 				return;
 			}
@@ -1439,7 +1440,6 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 
 // 200804 KBH change log file name 
 void CMainGraphDialog::initLog() {
-	long serialNumber = 4;
 	CreateDirectory(L"./Record/", NULL);
 
 	CString fileName, fileName2;
@@ -1450,8 +1450,8 @@ void CMainGraphDialog::initLog() {
 	//fileName = time.Format(L"./Record/%Y%m%d-%H%M-%S.txt");
 	//fileName2 = time.Format(L"./Record/pd%Y%m%d-%H%M-%S.txt");
 
-	fileName.Format(L"./Record/log%06ld-%s.txt", serialNumber, currentTime);
-	fileName2.Format(L"./Record/log%06ld-pd%s.txt", serialNumber, currentTime);
+	fileName.Format(L"./Record/temperature%05ld-%s.txt", (long)usbSerial, currentTime);
+	fileName2.Format(L"./Record/RFU%05ld-%s.txt", (long)usbSerial, currentTime);
 	
 
 	m_recFile.Open(fileName, CStdioFile::modeCreate | CStdioFile::modeWrite);
@@ -1572,7 +1572,7 @@ BOOL CMainGraphDialog::OnDeviceChange(UINT nEventType, DWORD dwData)
 		{
 			// Open Device & Start Timer
 			char serialBuffer[20];
-			sprintf(serialBuffer, "QuPCR%06d", serial_number);
+			sprintf(serialBuffer, "HelloPCR%05d", serial_number);
 
 			BOOL res = device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE);
 			isConnectionBroken = false;

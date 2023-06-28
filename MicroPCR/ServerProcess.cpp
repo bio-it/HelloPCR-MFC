@@ -92,10 +92,10 @@ void ServerProcess::StartProcess(long serial_number)
 	int mode = SW_HIDE;
 	FindUnusedPort();
 	CString arguments;
-	arguments.Format(L"%05ld", serial_number);
+	arguments.Format(L"-p %d %05ld", port, serial_number);
 #ifdef EMULATOR
 	mode = SW_SHOW;
-	arguments.Format(L"-E %05ld", serial_number);
+	arguments.Format(L"-E -p %d %05ld", port, serial_number);
 #endif
 	ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe", arguments, NULL, mode);
 }

@@ -121,7 +121,9 @@ private:
 	CRect m_graphRect; // 211117 KBH graph plot Rect 
 	bool isConnectionBroken; // 220707 KBH USB HID is disconnected
 	CTime startTime; //KBH230620 value for save start time of pcr protocol
-	ServerProcess server_process;
+	ServerProcess server_process; // KBH230628 external server process object
+	int usbSerial; // KBH230629 connected PCR device serial number
+
 public:
 	CMainGraphDialog(CWnd* pParent = nullptr);   // 표준 생성자입니다.
 	virtual ~CMainGraphDialog();
