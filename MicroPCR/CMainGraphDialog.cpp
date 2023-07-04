@@ -982,7 +982,7 @@ void CMainGraphDialog::timeTask() {
 					shotCounter++;
 					if (shotCounter == 1)
 					{
-						server_process.Shot(filterIndex, currentCycle, startTime.Format(L"%Y%m%d-%H%M%S"));
+						server_process.Shot(filterIndex, currentCycle, experiment_date.Format(L"%Y%m%d-%H%M%S"));
 					} 
 					// Shot sequence
 					else if (shotCounter >= 2) {
@@ -1467,8 +1467,8 @@ void CMainGraphDialog::initLog() {
 	CreateDirectory(recordDirectoryPath, NULL);
 
 	CString fileName, fileName2;
-	startTime = CTime::GetCurrentTime();
-	CString currentTime = startTime.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
+	experiment_date = CTime::GetCurrentTime();
+	CString currentTime = experiment_date.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
 
 	// change file name
 	//fileName = time.Format(L"./Record/%Y%m%d-%H%M-%S.txt");

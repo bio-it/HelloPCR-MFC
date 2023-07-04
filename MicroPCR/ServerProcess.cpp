@@ -64,7 +64,7 @@ Rx_Packet ServerProcess::TCP_xfer(Tx_Packet tx_packet)
 	return rx_packet;
 }
 
-int ServerProcess::Shot(int filter_index, int current_cycle, CString start_time)
+int ServerProcess::Shot(int filter_index, int current_cycle, CString experiment_date)
 {
 	int len;
 	Tx_Packet tx_packet;
@@ -72,7 +72,7 @@ int ServerProcess::Shot(int filter_index, int current_cycle, CString start_time)
 	tx_packet.Command = CMD_SHOT;
 	tx_packet.FilterIndex = filter_index;
 	tx_packet.CurrentCycle = current_cycle;
-	strcpy(tx_packet.StartTime, CStringToUTF8(start_time).c_str());
+	strcpy(tx_packet.ExperimentDate, CStringToUTF8(experiment_date).c_str());
 
 	Rx_Packet rx_packet = TCP_xfer(tx_packet);
 	return rx_packet.Intensity;

@@ -25,7 +25,7 @@ typedef struct TX_PACKET
 	Command Command;
 	int FilterIndex;
 	int CurrentCycle;
-	char StartTime[500];
+	char ExperimentDate[500];
 } Tx_Packet;
 
 typedef struct RX_PACKET
@@ -46,7 +46,7 @@ private:
 
 public:
 	ServerProcess();
-	int Shot(int filter_index, int current_cycle, CString start_time);
+	int Shot(int filter_index, int current_cycle, CString experiment_date);
 	int Status();
 	void SetIndicatorLED(Command command);
 	void StartProcess(long serial_number);
