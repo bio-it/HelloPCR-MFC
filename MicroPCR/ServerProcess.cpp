@@ -87,6 +87,14 @@ int ServerProcess::Status()
 	return rx_packet.Intensity;
 }
 
+void ServerProcess::SetIndicatorLED(Command command)
+{
+	Tx_Packet tx_packet;
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	tx_packet.Command = command;
+	Rx_Packet rx_packet = TCP_xfer(tx_packet);
+}
+
 void ServerProcess::StartProcess(long serial_number)
 {
 	int mode = SW_HIDE;

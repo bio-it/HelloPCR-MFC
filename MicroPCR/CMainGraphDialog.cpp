@@ -69,6 +69,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, isConnectionBroken(false)
 	, server_process()
 	, usbSerial(0)
+	, external_power(true)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -674,9 +675,12 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 
 			// Enable stop button
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
+			server_process.SetIndicatorLED(CMD_LED_RUN); // KBH230629 Device Indicator LED Running
+
 		}
 		else {
 			PCREndTask();
+			server_process.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
 		}
 	}
 	else {
@@ -778,6 +782,12 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	if (fabs(currentTemp - m_currentTargetTemp) < m_cArrivalDelta && !targetTempFlag)
 		isTargetArrival = true;
 
+	// KBH230704 Check external power is supplied
+	// existing photodiode is not using, so replace check external power connection 
+#ifndef EMULATOR
+	int voltiage = (int)(photodiode_h & 0x0f) * 256 + (int)(photodiode_l);
+	external_power = voltiage > 1700;
+#endif
 	// Check the error from device
 	static bool onceShow = true;
 	if (rx.currentError == ERROR_ASSERT && onceShow) {
@@ -788,6 +798,13 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		onceShow = false;
 		emergencyStop = true;
 		PCREndTask();// KJD 
+		server_process.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
+	} 
+	else if (!external_power && onceShow) { 
+		onceShow = false;
+		emergencyStop = true;
+		PCREndTask();
+		server_process.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
 	}
 
 	// logging
@@ -879,6 +896,7 @@ void CMainGraphDialog::timeTask() {
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
 				PCREndTask(); // KJD230622 call PCREndTask function
+				server_process.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
 				return;
 			}
 
@@ -1043,6 +1061,7 @@ void CMainGraphDialog::timeTask() {
 				{
 					AfxMessageBox(L"The target temperature cannot be reached!!");
 					PCREndTask();
+					server_process.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
 				}
 			}
 			else {
@@ -1442,6 +1461,11 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 void CMainGraphDialog::initLog() {
 	CreateDirectory(L"./Record/", NULL);
 
+	// KBH230629 change log file path 
+	CString recordDirectoryPath;
+	recordDirectoryPath.Format(L"./Record/HelloPCR%05ld", (long)usbSerial);
+	CreateDirectory(recordDirectoryPath, NULL);
+
 	CString fileName, fileName2;
 	startTime = CTime::GetCurrentTime();
 	CString currentTime = startTime.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
@@ -1450,8 +1474,8 @@ void CMainGraphDialog::initLog() {
 	//fileName = time.Format(L"./Record/%Y%m%d-%H%M-%S.txt");
 	//fileName2 = time.Format(L"./Record/pd%Y%m%d-%H%M-%S.txt");
 
-	fileName.Format(L"./Record/temperature%05ld-%s.txt", (long)usbSerial, currentTime);
-	fileName2.Format(L"./Record/RFU%05ld-%s.txt", (long)usbSerial, currentTime);
+	fileName.Format(L"%s/Temperature-%s.txt", recordDirectoryPath, currentTime);
+	fileName2.Format(L"%s/RFU-%s.txt", recordDirectoryPath, currentTime);
 	
 
 	m_recFile.Open(fileName, CStdioFile::modeCreate | CStdioFile::modeWrite);

@@ -5,11 +5,13 @@ typedef enum _Command
 {
 	CMD_STATUS = 0x00,
 	CMD_SHOT = 0x01,
-	CMD_LED_READY = 0x02,
-	CMD_LED_RUN = 0x03,
-	CMD_LED_ERROR = 0x04,
+	CMD_LED_OFF = 0x02,
+	CMD_LED_READY = 0x03,
+	CMD_LED_RUN = 0x04,
+	CMD_LED_ERROR = 0x05,
 	CMD_EXIT = 0xFF
 } Command;
+
 typedef enum _FILTERINDEX
 {
 	FAM = 1,
@@ -46,6 +48,7 @@ public:
 	ServerProcess();
 	int Shot(int filter_index, int current_cycle, CString start_time);
 	int Status();
+	void SetIndicatorLED(Command command);
 	void StartProcess(long serial_number);
 	void StopProcess();
 };

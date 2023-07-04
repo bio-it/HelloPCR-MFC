@@ -123,6 +123,7 @@ private:
 	CTime startTime; //KBH230620 value for save start time of pcr protocol
 	ServerProcess server_process; // KBH230628 external server process object
 	int usbSerial; // KBH230629 connected PCR device serial number
+	bool external_power; // KBH230704 External 5V 3A Power is Supplied
 
 public:
 	CMainGraphDialog(CWnd* pParent = nullptr);   // 표준 생성자입니다.
