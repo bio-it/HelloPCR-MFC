@@ -802,7 +802,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	} 
 	else if (!external_power && onceShow) { 
 		onceShow = false;
-		PCREndTask();
+		if (isStarted) PCREndTask();
 		server_process.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
 		AfxMessageBox(L"External power cable is not connected");
 	}
