@@ -67,9 +67,10 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, useCy5(false)
 	, m_strStylesPath(L"./")
 	, isConnectionBroken(false)
-	, server_process()
+	, serverProcess()
 	, usbSerial(0)
-	, external_power(true)
+	, externalPower(true)
+	, externalPowerCount(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -85,7 +86,7 @@ CMainGraphDialog::~CMainGraphDialog()
 		delete m_Timer;
 
 	// Process Stop HelloPCR-Runner.exe 
-	server_process.StopProcess();
+	serverProcess.StopProcess();
 }
 
 void CMainGraphDialog::DoDataExchange(CDataExchange* pDX)
@@ -546,70 +547,10 @@ void CMainGraphDialog::OnBnClickedButtonConnect()
 
 	// KJD230617 magneto bypass,
 	if (buttonState.Compare(L"Connect") == 0) {
-		// Getting the device index
-		int selectedIdx = deviceList.GetCurSel();
-
-		if (selectedIdx != -1) {
-			CString deviceSerial;
-			deviceList.GetLBText(selectedIdx, deviceSerial);
-			usbSerial = _ttoi(deviceSerial); // KBH230629 connected PCR device serial number 
-
-			// Found the same serial number device.
-			CStringA pcrSerial;
-			char serialBuffer[20];
-			pcrSerial.Format("HelloPCR%05d", usbSerial);
-			sprintf(serialBuffer, "%s", pcrSerial);
-
-			if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE)) {
-				AfxMessageBox(L"PCR is failed to connect(Unknown error).");
-				return;
-			}
-
-			// Connection processing
-			isConnected = true;
-
-			SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Connected");
-			SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
-			GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
-
-			CString prevTitle;
-			GetWindowText(prevTitle);
-			prevTitle.Format(L"%s - %s", prevTitle, deviceSerial);
-			SetWindowText(prevTitle);
-
-			if (isProtocolLoaded) {
-				GetDlgItem(IDC_BUTTON_START)->EnableWindow();
-			}
-			// KBH230623 Start Timer when device connected
-			m_Timer->startTimer(TIMER_DURATION, FALSE);
-			// Process Start HelloPCR-Runner.exe 
-			server_process.StartProcess(usbSerial);
-		}
-		else {
-			AfxMessageBox(L"Please select the device first.");
-		}
-
+		connectDevice();
 	}
 	else {
-		isConnected = false;
-
-		device->CloseDevice();
-
-		CString prevTitle;
-		GetWindowText(prevTitle);
-		CString left = prevTitle.Left(prevTitle.Find(L")") + 1);
-		SetWindowText(left);
-
-		SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Disconnected");
-		SetDlgItemText(IDC_BUTTON_CONNECT, L"Connect");
-		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow();
-		GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
-
-		// KBH230623 Stop Timer when device disconnected
-		m_Timer->stopTimer();
-
-		// Process Stop HelloPCR-Runner.exe 
-		server_process.StopProcess();
+		disconnectDevice();
 	}
 
 	GetDlgItem(IDC_BUTTON_CONNECT)->EnableWindow(TRUE);
@@ -675,12 +616,12 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 
 			// Enable stop button
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
-			server_process.SetIndicatorLED(CMD_LED_RUN); // KBH230629 Device Indicator LED Running
+			serverProcess.SetIndicatorLED(CMD_LED_RUN); // KBH230629 Device Indicator LED Running
 
 		}
 		else {
 			PCREndTask();
-			server_process.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
+			serverProcess.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
 		}
 	}
 	else {
@@ -784,10 +725,13 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 
 	// KBH230704 Check external power is supplied
 	// existing photodiode is not using, so replace check external power connection 
-#ifndef EMULATOR
-	int voltiage = (int)(photodiode_h & 0x0f) * 256 + (int)(photodiode_l);
-	external_power = voltiage > 1700;
-#endif
+ #ifndef EMULATOR
+	int voltage = (int)(photodiode_h & 0x0f) * 256 + (int)(photodiode_l);
+	if (voltage < 1700)
+		externalPower = ++externalPowerCount < 5;
+	else 
+		externalPowerCount = 0;
+ #endif
 	// Check the error from device
 	static bool onceShow = true;
 	if (rx.currentError == ERROR_ASSERT && onceShow) {
@@ -798,14 +742,19 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		onceShow = false;
 		emergencyStop = true;
 		PCREndTask();// KJD 
-		server_process.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
+		serverProcess.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
 	} 
-	else if (!external_power && onceShow) { 
+	else if (!externalPower && onceShow) { 
 		onceShow = false;
+		serverProcess.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
 		if (isStarted) PCREndTask();
-		server_process.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
+		disconnectDevice();
 		AfxMessageBox(L"External power cable is not connected");
+		externalPower = true;
+		externalPowerCount = 0;
+		onceShow = true;
 	}
+
 
 	// logging
 	if (!logStopped && isStarted) {
@@ -896,7 +845,7 @@ void CMainGraphDialog::timeTask() {
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
 				PCREndTask(); // KJD230622 call PCREndTask function
-				server_process.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
+				serverProcess.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
 				return;
 			}
 
@@ -982,7 +931,7 @@ void CMainGraphDialog::timeTask() {
 					shotCounter++;
 					if (shotCounter == 1)
 					{
-						server_process.Shot(filterIndex, currentCycle, experiment_date.Format(L"%Y%m%d-%H%M%S"));
+						serverProcess.Shot(filterIndex, currentCycle, experimentDate.Format(L"%Y%m%d-%H%M%S"));
 					} 
 					// Shot sequence
 					else if (shotCounter >= 2) {
@@ -990,7 +939,7 @@ void CMainGraphDialog::timeTask() {
 						//// Getting the photodiode data
 						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
 
-						double lights = server_process.Status();
+						double lights = serverProcess.Status();
 						if (lights != -1)
 						{
 							sensorValues->push_back(lights);
@@ -1061,7 +1010,7 @@ void CMainGraphDialog::timeTask() {
 				{
 					AfxMessageBox(L"The target temperature cannot be reached!!");
 					PCREndTask();
-					server_process.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
+					serverProcess.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
 				}
 			}
 			else {
@@ -1467,8 +1416,8 @@ void CMainGraphDialog::initLog() {
 	CreateDirectory(recordDirectoryPath, NULL);
 
 	CString fileName, fileName2;
-	experiment_date = CTime::GetCurrentTime();
-	CString currentTime = experiment_date.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
+	experimentDate = CTime::GetCurrentTime();
+	CString currentTime = experimentDate.Format(L"%Y%m%d-%H-%M-%S"); // KBH 220402 오타 수정
 
 	// change file name
 	//fileName = time.Format(L"./Record/%Y%m%d-%H%M-%S.txt");
@@ -1624,3 +1573,71 @@ BOOL CMainGraphDialog::OnDeviceChange(UINT nEventType, DWORD dwData)
 	return false;
 }
 
+void CMainGraphDialog::connectDevice()
+{
+	// Getting the device index
+	int selectedIdx = deviceList.GetCurSel();
+
+	if (selectedIdx != -1) {
+		CString deviceSerial;
+		deviceList.GetLBText(selectedIdx, deviceSerial);
+		usbSerial = _ttoi(deviceSerial); // KBH230629 connected PCR device serial number 
+
+		// Found the same serial number device.
+		CStringA pcrSerial;
+		char serialBuffer[20];
+		pcrSerial.Format("HelloPCR%05d", usbSerial);
+		sprintf(serialBuffer, "%s", pcrSerial);
+
+		if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE)) {
+			AfxMessageBox(L"PCR is failed to connect(Unknown error).");
+			return;
+		}
+
+		// Connection processing
+		isConnected = true;
+
+		SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Connected");
+		SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
+		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
+
+		CString prevTitle;
+		GetWindowText(prevTitle);
+		prevTitle.Format(L"%s - %s", prevTitle, deviceSerial);
+		SetWindowText(prevTitle);
+
+		if (isProtocolLoaded) {
+			GetDlgItem(IDC_BUTTON_START)->EnableWindow();
+		}
+		// KBH230623 Start Timer when device connected
+		m_Timer->startTimer(TIMER_DURATION, FALSE);
+		// Process Start HelloPCR-Runner.exe 
+		serverProcess.StartProcess(usbSerial);
+		serverProcess.SetIndicatorLED(CMD_LED_READY);
+	}
+	else {
+		AfxMessageBox(L"Please select the device first.");
+	}
+}
+void CMainGraphDialog::disconnectDevice()
+{
+	isConnected = false;
+
+	device->CloseDevice();
+
+	CString prevTitle;
+	GetWindowText(prevTitle);
+	CString left = prevTitle.Left(prevTitle.Find(L")") + 1);
+	SetWindowText(left);
+
+	SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Disconnected");
+	SetDlgItemText(IDC_BUTTON_CONNECT, L"Connect");
+	GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow();
+	GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
+
+	// KBH230623 Stop Timer when device disconnected
+	m_Timer->stopTimer();
+
+	// Process Stop HelloPCR-Runner.exe 
+	serverProcess.StopProcess();
+}

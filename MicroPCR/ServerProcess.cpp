@@ -105,7 +105,7 @@ void ServerProcess::StartProcess(long serial_number)
 	mode = SW_SHOW;
 	arguments.Format(L"-E -p %d %05ld", port, serial_number);
 #endif
-	ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe", arguments, NULL, mode);
+	ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe", arguments, NULL, SW_SHOW);
 }
 
 void ServerProcess::StopProcess()

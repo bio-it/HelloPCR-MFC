@@ -31,7 +31,7 @@ typedef struct TX_PACKET
 typedef struct RX_PACKET
 {
 	int Intensity;
-	char reserved[508];
+	char reserved[508]; // 512 byte 
 } Rx_Packet;
 
 class ServerProcess
