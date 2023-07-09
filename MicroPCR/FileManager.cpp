@@ -153,16 +153,23 @@ namespace FileManager
 		return res;
 	}
 
-	// 220817 KBH change filename and path 
+	// 230709 KBH change filename and path 
 	void log(CString msg, long serialNumber)
 	{
 		CString path;
 		CStdioFile file;
 		CFileFind finder;
 		CTime time = CTime::GetCurrentTime();
+		CString path_serial; 
+		path_serial.Format(L"/HelloPCR%05ld", serialNumber);
 		
-		CreateDirectory(L"./Log", NULL);
-		path.Format(L"./Log/err%06ld.txt", serialNumber);
+		path = L"./Record";
+		CreateDirectory(path, NULL);
+		path = path + path_serial;
+		CreateDirectory(path, NULL);
+		path = path + L"/Log";
+		CreateDirectory(path, NULL);
+		path =  path +  L"/HelloPCR-" + time.Format("%Y%m%d") + L".log";
 		
 		if( finder.FindFile(path) )
 			file.Open(path, CStdioFile::modeWrite);
@@ -170,7 +177,7 @@ namespace FileManager
 			file.Open(path, CStdioFile::modeCreate|CStdioFile::modeWrite);
 
 		file.SeekToEnd();
-		file.WriteString(time.Format(L"[%Y:%m:%d-%H:%M:%S]\t") + msg + L"\r\n");
+		file.WriteString(time.Format(L"[%Y:%m:%d-%H:%M:%S]\t") + msg + L"\n");
 		file.Close();
 	}
 
