@@ -66,7 +66,7 @@ CMainGraphDialog::CMainGraphDialog(CWnd* pParent /*=nullptr*/)
 	, useRox(false)
 	, useCy5(false)
 	, m_strStylesPath(L"./")
-	, isConnectionBroken(false)
+	, timerBlocked(false)
 	, serverProcess()
 	, usbSerial(0)
 	, externalPower(true)
@@ -527,7 +527,7 @@ void CMainGraphDialog::initPCRDevices() {
 	for (int i = 0; i < deviceNums; ++i) {
 		CString deviceSerial = device->GetDeviceSerial(i);
 
-		// Remove the QuPCR string
+		// Remove the HelloPCR string
 		deviceList.AddString(deviceSerial.Mid(8));
 	}
 
@@ -725,13 +725,13 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 
 	// KBH230704 Check external power is supplied
 	// existing photodiode is not using, so replace check external power connection 
- #ifndef EMULATOR
-	int voltage = (int)(photodiode_h & 0x0f) * 256 + (int)(photodiode_l);
+ //#ifndef EMULATOR
+	/*int voltage = (int)(photodiode_h & 0x0f) * 256 + (int)(photodiode_l);
 	if (voltage < 1700)
-		externalPower = ++externalPowerCount < 5;
+		externalPower = ++externalPowerCount < 10;
 	else 
-		externalPowerCount = 0;
- #endif
+		externalPowerCount = 0;*/
+ //#endif
 	// Check the error from device
 	static bool onceShow = true;
 	if (rx.currentError == ERROR_ASSERT && onceShow) {
@@ -744,17 +744,16 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		PCREndTask();// KJD 
 		serverProcess.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
 	} 
-	else if (!externalPower && onceShow) { 
-		onceShow = false;
-		serverProcess.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
-		if (isStarted) PCREndTask();
-		disconnectDevice();
-		AfxMessageBox(L"External power cable is not connected");
-		externalPower = true;
-		externalPowerCount = 0;
-		onceShow = true;
-	}
-
+	//else if (!externalPower && onceShow) { 
+	//	onceShow = false;
+	//	serverProcess.SetIndicatorLED(CMD_LED_OFF); // if external power is not supplied, turn off indicator LED
+	//	if (isStarted) PCREndTask();
+	//	disconnectDevice();
+	//	AfxMessageBox(L"External power cable is not connected");
+	//	externalPower = true;
+	//	externalPowerCount = 0;
+	//	onceShow = true;
+	//}
 
 	// logging
 	if (!logStopped && isStarted) {
@@ -1133,154 +1132,61 @@ void CMainGraphDialog::setChartValue() {
 		double* dataHex = new double[sensorValuesHex.size() * 2];
 		double* dataRox = new double[sensorValuesRox.size() * 2];
 		double* dataCy5 = new double[sensorValuesCy5.size() * 2];
-
 		vector<double> copySensorValuesFam, copySensorValuesHex, copySensorValuesRox, copySensorValuesCy5;
-		double meanFam = 0.0, meanHex = 0.0, meanRox = 0.0, meanCy5 = 0.0;
+
+		bool* useColors = new bool[4]{ useFam, useHex, useRox, useCy5 };
+		double** datas = new double* [4]{ dataFam, dataHex, dataRox, dataCy5 }; // 
+		vector<double>* sensorValues = new vector<double>[4]{ sensorValuesFam, sensorValuesHex, sensorValuesRox, sensorValuesCy5 };
+		vector<double>* copySensorValues = new vector<double>[4]{ copySensorValuesFam, copySensorValuesHex, copySensorValuesRox, copySensorValuesCy5 };
+		COLORREF* colors = new COLORREF[4]{ RGB(0, 0, 255),  RGB(0, 255, 0), RGB(0, 128, 0), RGB(255, 0, 0) };
 
 		int maxY = 0;
 
-		if (useFam)
-		{
-			// Calculate the mean value first
-			if (sensorValuesFam.size() >= 11) {
-				double sum = std::accumulate(sensorValuesFam.begin()+1, sensorValuesFam.begin() + 11, 0.0);
-				meanFam = sum / 10;
+		for (int idx = 0; idx < 4; idx++) {
+			if (!useColors[idx]) continue;
+			double* targetData = datas[idx];
+			COLORREF color = colors[idx];
+			vector<double> values = sensorValues[idx];
+			vector<double> copyValues = copySensorValues[idx];
+			double meanValues = 0.0;
+			if (values.size() < 16) {
+				double sumValues = std::accumulate(values.begin(), values.end(), 0.0);
+				meanValues = sumValues / values.size();
+
+				for (int x = 0; x < values.size(); x++) {
+					copyValues.push_back(values[x] - meanValues);
+				}
 			}
 			else {
-				double sum = std::accumulate(sensorValuesFam.begin(), sensorValuesFam.end(), 0.0);
-				meanFam = sum / sensorValuesFam.size();
-			}
-
-			// Copy data
-			for (int i = 0; i < sensorValuesFam.size(); ++i) {
-				if (i >= 1) {
-					copySensorValuesFam.push_back(sensorValuesFam[i] - meanFam);
+				float bs = 4, be = 16;// line fitting at cycle 4~15 data
+				double xm = 0, ym = 0, sxx = 0, syy = 0, sxy = 0, a = 0, b = 0;
+				for (int x = bs; x < be; x++) {
+					double y = values[x];
+					xm += x;
+					ym += y;
+					sxx += x * x;
+					sxy += x * y;
 				}
-				else {
-					copySensorValuesFam.push_back(sensorValuesFam[i]);
-				}
-			}
+				double nos = be - bs;
+				xm = xm / nos;
+				ym = ym / nos;
+				sxx = sxx / nos - xm * xm;
+				sxy = sxy / nos - xm * ym;
+				a = sxy / sxx;
+				b = ym - a * xm;
 
-			int	nDims_fam = 2, dims_fam[2] = { 2, copySensorValuesFam.size() };
-			for (int i = 0; i < copySensorValuesFam.size(); ++i)
-			{
-				dataFam[i] = i;
-				dataFam[i + copySensorValuesFam.size()] = copySensorValuesFam[i];
-			}
-			m_Chart.SetDataColor(m_Chart.AddData(dataFam, nDims_fam, dims_fam), RGB(0, 0, 255));
-
-			int tempMax = *max_element(copySensorValuesFam.begin(), copySensorValuesFam.end());
-
-			if (maxY < tempMax) {
-				maxY = tempMax;
-			}
-		}
-
-		if (useHex)
-		{
-			// Calculate the mean value first
-			if (sensorValuesHex.size() >= 11) {
-				double sum = std::accumulate(sensorValuesHex.begin()+1, sensorValuesHex.begin() + 11, 0.0);
-				meanHex = sum / 10;
-			}
-			else {
-				double sum = std::accumulate(sensorValuesHex.begin(), sensorValuesHex.end(), 0.0);
-				meanHex = sum / sensorValuesHex.size();
-			}
-
-			// Copy data
-			for (int i = 0; i < sensorValuesHex.size(); ++i) {
-				if (i >= 1) {
-					copySensorValuesHex.push_back(sensorValuesHex[i] - meanHex);
-				}
-				else {
-					copySensorValuesHex.push_back(sensorValuesHex[i]);
+				for (int x = 0; x < values.size(); x++) { //sensorValue size = idx
+					copyValues.push_back(values[x] - (a * x + b));
 				}
 			}
-
-			int	nDims_hex = 2, dims_hex[2] = { 2, copySensorValuesHex.size() };
-			for (int i = 0; i < copySensorValuesHex.size(); ++i)
-			{
-				dataHex[i] = i;
-				dataHex[i + copySensorValuesHex.size()] = copySensorValuesHex[i];
+			int nDims = 2, dims[2] = { 2, copyValues.size() };
+			for (int x = 0; x < copyValues.size(); x++) {
+				targetData[x] = x;
+				targetData[x + copyValues.size()] = copyValues[x];
 			}
-			m_Chart.SetDataColor(m_Chart.AddData(dataHex, nDims_hex, dims_hex), RGB(0, 255, 0));
+			m_Chart.SetDataColor(m_Chart.AddData(targetData, nDims, dims), color);
 
-			int tempMax = *max_element(copySensorValuesHex.begin(), copySensorValuesHex.end());
-
-			if (maxY < tempMax) {
-				maxY = tempMax;
-			}
-		}
-
-		if (useRox)
-		{
-			// Calculate the mean value first
-			if (sensorValuesRox.size() >= 11) {
-				double sum = std::accumulate(sensorValuesRox.begin()+1, sensorValuesRox.begin() + 11, 0.0);
-				meanRox = sum / 10;
-			}
-			else {
-				double sum = std::accumulate(sensorValuesRox.begin(), sensorValuesRox.end(), 0.0);
-				meanRox = sum / sensorValuesRox.size();
-			}
-
-			// Copy data
-			for (int i = 0; i < sensorValuesRox.size(); ++i) {
-				if (i >= 1) {
-					copySensorValuesRox.push_back(sensorValuesRox[i] - meanRox);
-				}
-				else {
-					copySensorValuesRox.push_back(sensorValuesRox[i]);
-				}
-			}
-
-			int	nDims_rox = 2, dims_rox[2] = { 2, copySensorValuesRox.size() };
-			for (int i = 0; i < copySensorValuesRox.size(); ++i)
-			{
-				dataRox[i] = i;
-				dataRox[i + copySensorValuesRox.size()] = copySensorValuesRox[i];
-			}
-			m_Chart.SetDataColor(m_Chart.AddData(dataRox, nDims_rox, dims_rox), RGB(0, 128, 0));
-
-			int tempMax = *max_element(copySensorValuesRox.begin(), copySensorValuesRox.end());
-
-			if (maxY < tempMax) {
-				maxY = tempMax;
-			}
-		}
-
-		if (useCy5)
-		{
-			// Calculate the mean value first
-			if (sensorValuesCy5.size() >= 11) {
-				double sum = std::accumulate(sensorValuesCy5.begin()+1, sensorValuesCy5.begin() + 11, 0.0);
-				meanCy5 = sum / 10;
-			}
-			else {
-				double sum = std::accumulate(sensorValuesCy5.begin(), sensorValuesCy5.end(), 0.0);
-				meanCy5 = sum / sensorValuesCy5.size();
-			}
-
-			// Copy data
-			for (int i = 0; i < sensorValuesCy5.size(); ++i) {
-				if (i >= 1) {
-					copySensorValuesCy5.push_back(sensorValuesCy5[i] - meanCy5);
-				}
-				else {
-					copySensorValuesCy5.push_back(sensorValuesCy5[i]);
-				}
-			}
-
-			int	nDims_cy5 = 2, dims_cy5[2] = { 2, copySensorValuesCy5.size() };
-			for (int i = 0; i < copySensorValuesCy5.size(); ++i)
-			{
-				dataCy5[i] = i;
-				dataCy5[i + copySensorValuesCy5.size()] = copySensorValuesCy5[i];
-			}
-			m_Chart.SetDataColor(m_Chart.AddData(dataCy5, nDims_cy5, dims_cy5), RGB(255, 0, 0));
-
-			int tempMax = *max_element(copySensorValuesCy5.begin(), copySensorValuesCy5.end());
+			int tempMax = *max_element(copyValues.begin(), copyValues.end());
 
 			if (maxY < tempMax) {
 				maxY = tempMax;
@@ -1335,31 +1241,51 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 	// 220222 KBH filter threshold values array
 	float filterThreshold[4] = { currentProtocol.thresholdFam, currentProtocol.thresholdHex, currentProtocol.thresholdRox, currentProtocol.thresholdCY5 };
 
-	// ignore the data when the data is over the 10
+	// ignore the data when the data is under the 15
 	int idx = sensorValue.size();
 
-	// If the idx is under the 10, fail
-	if (idx >= 11) {
-		// BaseMean value
-		float baseMean = 0.0;
-		// 220215 KBH Change baseMean calculation range (1 ~ 11 -> 3 ~ 16)
-		for (int i = 3; i < 16; ++i) {
-			baseMean += sensorValue[i];
+	// If the idx is under the 14, fail
+	if (idx >= 15) {
+		float bs = 4, be = 16;//cycle 4~15 date에 line fitting
+		double xm = 0, ym = 0, sxx = 0, syy = 0, sxy = 0, a = 0, b = 0;
+		for (int x = bs; x < be; x++) {
+			double y = sensorValue[x];
+			xm += x;
+			ym += y;
+			sxx += x * x;
+			sxy += x * y;
 		}
-		baseMean /= 13.;
-
-		// 220222 KBH Change how thresholds are loaded.
-		float logThreshold = filterThreshold[filterIndex];
+		double nos = be - bs;
+		xm = xm / nos;
+		ym = ym / nos;
+		sxx = sxx / nos - xm * xm;
+		sxy = sxy / nos - xm * ym;
+		a = sxy / sxx;
+		b = ym - a * xm;
+		float baseline[60];
+		for (int x = 0; x < idx; x++) {
+			baseline[x] = a * x + b;
+		}
+		float threshold = 0.697 * flRelativeMax / 10.;
+		float logThreshold = log(threshold);
 		float ct;
 
-		// 211119 KBH start index change (i = 0 -> i = 11)
+		// Getting the log threshold from file
+		float tempLogThreshold = FileManager::getFilterValue(filterIndex);
+
+		// Success to load
+		if (tempLogThreshold > 0.0) {
+			logThreshold = tempLogThreshold;
+		}
+
+		// 230706 KBH start index change (i = 11 -> i = 15)
 		for (int i = 11; i < sensorValue.size(); ++i) {
-			if (log(sensorValue[i] - baseMean) > logThreshold) {
+			if (log(sensorValue[i] - baseline[i]) > logThreshold) {
 				idx = i;
 				break;
 			}
 		}
-		
+
 		if (idx >= sensorValue.size() || idx <= 0) {
 			// 210714 KBH Change "Not detected" to "Negative"
 			//result = L"Not detected";
@@ -1367,18 +1293,17 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 		}
 		else {
 			double resultRange[4] = { currentProtocol.ctFam, currentProtocol.ctHex, currentProtocol.ctRox, currentProtocol.ctCY5 };
-
 			float cpos = idx; // 220216 KBH The starting index of sensorValue is 1
-			float cval = log(sensorValue[idx] - baseMean);
-			float delta = cval - log(sensorValue[idx - 1] - baseMean);
+			float cval = log(sensorValue[idx] - baseline[idx]);
+			float delta = cval - log(sensorValue[idx - 1] - baseline[idx - 1]);
 			ct = cpos - (cval - logThreshold) / delta;
 			ctText.Format(L"%.2f", ct);
 
-			if (resultRange[filterIndex] <= ct) {
-				result = L"Negative";
+			if (16 <= ct && ct >= maxCycles) {
+				result = resultRange[filterIndex] <= ct ? L"Negative" : L"Positive";
 			}
 			else {
-				result = L"Positive";
+				result = L"Error";
 			}
 
 			// Setting the CT text
@@ -1513,64 +1438,31 @@ void CMainGraphDialog::OnBnClickedButtonFilterCy5()
 // 220325 KBH Device Change Handler
 BOOL CMainGraphDialog::OnDeviceChange(UINT nEventType, DWORD dwData)
 {	
-	if ( isConnected )
-	{
-		// get current connected device serial number
-		CString deviceSerial;
-		int selectedIdx = deviceList.GetCurSel();
-		deviceList.GetLBText(selectedIdx, deviceSerial);
-		int serial_number = _ttoi(deviceSerial);
-
-		// check device list
-		int deviceNums = device->GetDevices();
-		bool detected = false;
-
-		// check Running State
-		bool isPCR = false;
-		CString progressState;
-		GetDlgItemText(IDC_STATIC_PROGRESS_STATUS, progressState);
-		isPCR = progressState.Compare(L"PCR in progress...") == 0;
+	if (isConnected) {
+		// serial number convert int to string 
+		char serial_buffer[20];
+		sprintf(serial_buffer, "HelloPCR%05d", usbSerial);
 		
-		for (int i = 0; i < deviceNums; ++i)
-		{
-			CString serial = device->GetDeviceSerial(i).Mid(5);
-			// check existed connected device
-			if (deviceSerial.Compare(serial) == 0)
-			{
-				detected = true;
-			}
-		}
-
-		if (isConnectionBroken && detected)
-		{
-			// Open Device & Start Timer
-			char serialBuffer[20];
-			sprintf(serialBuffer, "HelloPCR%05d", serial_number);
-
-			BOOL res = device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE);
-			isConnectionBroken = false;
-
-			if (isStarted && isPCR)
-			{
+		// open device 
+		BOOL status = device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serial_buffer, TRUE);
+		
+		if (status) {
+			if (timerBlocked) {
+				timerBlocked = false;
 				m_Timer->startTimer(TIMER_DURATION, FALSE);
+				FileManager::log(L"USB Connected", usbSerial);
 			}
-
-			FileManager::log(L"USB Connected", serial_number);
 		}
-		else if (!isConnectionBroken && !detected)
-		{
-			// Stop Timer & Close Device
-			if (isStarted && isPCR)
-			{
-				m_Timer->stopTimer();
-			}
-			device->CloseDevice();
-			isConnectionBroken = true;
-			
-			FileManager::log(L"USB Disconnected", serial_number);
+		else if (!timerBlocked) {
+			timerBlocked = true;
+			m_Timer->stopTimer();
+			FileManager::log(L"USB Disconnected", usbSerial);
 		}
 	}
-	return false;
+	else {
+		initPCRDevices();
+	}
+	return TRUE;
 }
 
 void CMainGraphDialog::connectDevice()
@@ -1579,17 +1471,17 @@ void CMainGraphDialog::connectDevice()
 	int selectedIdx = deviceList.GetCurSel();
 
 	if (selectedIdx != -1) {
-		CString deviceSerial;
-		deviceList.GetLBText(selectedIdx, deviceSerial);
-		usbSerial = _ttoi(deviceSerial); // KBH230629 connected PCR device serial number 
+		CString device_serial;
+		deviceList.GetLBText(selectedIdx, device_serial);
+		usbSerial = _ttoi(device_serial); // KBH230629 connected PCR device serial number 
 
 		// Found the same serial number device.
 		CStringA pcrSerial;
-		char serialBuffer[20];
+		char serial_buffer[20];
 		pcrSerial.Format("HelloPCR%05d", usbSerial);
-		sprintf(serialBuffer, "%s", pcrSerial);
+		sprintf(serial_buffer, "%s", pcrSerial);
 
-		if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serialBuffer, TRUE)) {
+		if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serial_buffer, TRUE)) {
 			AfxMessageBox(L"PCR is failed to connect(Unknown error).");
 			return;
 		}
@@ -1603,17 +1495,19 @@ void CMainGraphDialog::connectDevice()
 
 		CString prevTitle;
 		GetWindowText(prevTitle);
-		prevTitle.Format(L"%s - %s", prevTitle, deviceSerial);
+		prevTitle.Format(L"%s - %s", prevTitle, device_serial);
 		SetWindowText(prevTitle);
 
 		if (isProtocolLoaded) {
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 		}
-		// KBH230623 Start Timer when device connected
-		m_Timer->startTimer(TIMER_DURATION, FALSE);
 		// Process Start HelloPCR-Runner.exe 
 		serverProcess.StartProcess(usbSerial);
 		serverProcess.SetIndicatorLED(CMD_LED_READY);
+
+		// KBH230623 Start Timer when device connected
+		timerBlocked = false;
+		m_Timer->startTimer(TIMER_DURATION, FALSE);
 	}
 	else {
 		AfxMessageBox(L"Please select the device first.");
@@ -1636,6 +1530,7 @@ void CMainGraphDialog::disconnectDevice()
 	GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
 
 	// KBH230623 Stop Timer when device disconnected
+	timerBlocked = false;
 	m_Timer->stopTimer();
 
 	// Process Stop HelloPCR-Runner.exe 

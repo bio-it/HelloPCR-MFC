@@ -119,7 +119,7 @@ private:
 	bool useCy5;
 
 	CRect m_graphRect; // 211117 KBH graph plot Rect 
-	bool isConnectionBroken; // 220707 KBH USB HID is disconnected
+	bool timerBlocked; // 230709 KBH is m_Timer Blocked
 	CTime experimentDate; //KBH230620 value for save start time of pcr protocol
 	ServerProcess serverProcess; // KBH230628 external server process object
 	int usbSerial; // KBH230629 connected PCR device serial number
