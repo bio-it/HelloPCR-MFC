@@ -1279,7 +1279,7 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 		}
 
 		// 230706 KBH start index change (i = 11 -> i = 15)
-		for (int i = 11; i < sensorValue.size(); ++i) {
+		for (int i = 15; i < sensorValue.size(); ++i) {
 			if (log(sensorValue[i] - baseline[i]) > logThreshold) {
 				idx = i;
 				break;
@@ -1299,7 +1299,7 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 			ct = cpos - (cval - logThreshold) / delta;
 			ctText.Format(L"%.2f", ct);
 
-			if (16 <= ct && ct >= maxCycles) {
+			if (16 <= ct && ct <= maxCycles) {
 				result = resultRange[filterIndex] <= ct ? L"Negative" : L"Positive";
 			}
 			else {
