@@ -621,8 +621,8 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 
 		}
 		else {
-			PCREndTask();
 			serverProcess.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
+			PCREndTask();
 		}
 	}
 	else {
@@ -742,8 +742,8 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 	else if (rx.currentError == ERROR_OVERHEAT && onceShow) {
 		onceShow = false;
 		emergencyStop = true;
-		PCREndTask();// KJD 
 		serverProcess.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
+		PCREndTask();// KJD 
 	} 
 	//else if (!externalPower && onceShow) { 
 	//	onceShow = false;
@@ -844,8 +844,8 @@ void CMainGraphDialog::timeTask() {
 			{
 				::OutputDebugString(L"complete!\n");
 				isCompletePCR = true;
-				PCREndTask(); // KJD230622 call PCREndTask function
 				serverProcess.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
+				PCREndTask(); // KJD230622 call PCREndTask function
 				return;
 			}
 
@@ -939,7 +939,7 @@ void CMainGraphDialog::timeTask() {
 						//// Getting the photodiode data
 						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
 
-						double lights = serverProcess.Status();
+						double lights = serverProcess.UpdateStatus();
 						if (lights != -1)
 						{
 							sensorValues->push_back(lights);
@@ -1009,8 +1009,8 @@ void CMainGraphDialog::timeTask() {
 				if (m_timeOut == 0)
 				{
 					AfxMessageBox(L"The target temperature cannot be reached!!");
-					PCREndTask();
 					serverProcess.SetIndicatorLED(CMD_LED_ERROR); // KBH230629 Device Indicator LED Error
+					PCREndTask();
 				}
 			}
 			else {
