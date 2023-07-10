@@ -125,6 +125,9 @@ private:
 	int usbSerial; // KBH230629 connected PCR device serial number
 	bool externalPower; // KBH230704 External 5V 3A Power is Supplied
 	int externalPowerCount; // KBH230704 External Power counter
+
+	// KBH230710 check device is used 
+	bool isDeviceSerialUsed(string title, string device_serial);
 	// KBH230705 connect & disconnect device function 
 	void connectDevice(); 
 	void disconnectDevice();

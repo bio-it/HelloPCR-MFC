@@ -14,6 +14,7 @@
 #include "ProgressThread.h"
 #include "ConfirmDialog.h"
 
+#include <sstream>
 #include <numeric>
 #include <Dbt.h> // 220325 KBH Device Change Handler
 
@@ -1475,6 +1476,16 @@ void CMainGraphDialog::connectDevice()
 		deviceList.GetLBText(selectedIdx, device_serial);
 		usbSerial = _ttoi(device_serial); // KBH230629 connected PCR device serial number 
 
+		CString prevTitle;
+		GetWindowText(prevTitle);
+
+		// KBH230710 Check Device Serial is already used 
+		if (isDeviceSerialUsed((string)CT2A(prevTitle), (string)CT2A(device_serial)))
+		{
+			AfxMessageBox(L"device is already running");
+			return;
+		}
+
 		// Found the same serial number device.
 		CStringA pcrSerial;
 		char serial_buffer[20];
@@ -1486,6 +1497,9 @@ void CMainGraphDialog::connectDevice()
 			return;
 		}
 
+		prevTitle.Format(L"%s - %s", prevTitle, device_serial);
+		SetWindowText(prevTitle);
+
 		// Connection processing
 		isConnected = true;
 
@@ -1493,14 +1507,10 @@ void CMainGraphDialog::connectDevice()
 		SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
 		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
 
-		CString prevTitle;
-		GetWindowText(prevTitle);
-		prevTitle.Format(L"%s - %s", prevTitle, device_serial);
-		SetWindowText(prevTitle);
-
 		if (isProtocolLoaded) {
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 		}
+
 		// Process Start HelloPCR-Runner.exe 
 		serverProcess.StartProcess(usbSerial);
 		serverProcess.SetIndicatorLED(CMD_LED_READY);
@@ -1535,4 +1545,77 @@ void CMainGraphDialog::disconnectDevice()
 
 	// Process Stop HelloPCR-Runner.exe 
 	serverProcess.StopProcess();
+}
+
+// trim from right 
+inline std::string& rtrim(std::string& s, const char* t = " \t\n\r\f\v")
+{
+	s.erase(s.find_last_not_of(t) + 1);
+	return s;
+}
+
+bool CMainGraphDialog::isDeviceSerialUsed(string title, string device_serial)
+{
+	// command setting
+	char* cmd = "tasklist /v /fi \"imagename eq HelloPCR.exe\"";
+	wchar_t command[256];
+	mbstowcs(command, cmd, strlen(cmd) + 1);
+
+	HANDLE read_pipe, write_pipe;
+	
+	// secure option setting
+	SECURITY_ATTRIBUTES saAttr = { sizeof(SECURITY_ATTRIBUTES) };
+	saAttr.bInheritHandle = TRUE; 
+	saAttr.lpSecurityDescriptor = NULL;
+
+	if (!CreatePipe(&read_pipe, &write_pipe, &saAttr, 0))
+		return true;
+
+	// start infomation setting
+	STARTUPINFO start_info = { sizeof(STARTUPINFO) };
+	start_info.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+	start_info.hStdOutput = write_pipe;
+	start_info.hStdError = write_pipe;
+	start_info.wShowWindow = SW_HIDE;
+
+	// process infomation setting
+	PROCESS_INFORMATION process_info = { 0 };
+	// execute command
+	if (!CreateProcess(NULL, command, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &start_info, &process_info))
+		return true;
+
+	WaitForSingleObject(process_info.hProcess, 200); // wait command executing is done
+	TerminateProcess(process_info.hProcess, 0);		 // kill process
+	if (!CloseHandle(write_pipe)) return true;		 // close write pipe handler
+
+	// read standard output stream
+	int idx;
+	DWORD size;
+	string output; char buffer[4096];
+	memset(buffer, 0, sizeof(buffer));
+
+	while (ReadFile(read_pipe, buffer, sizeof(buffer), &size, NULL) && size != 0) {
+		buffer[size] = 0;
+		output += string(buffer);
+		memset(buffer, 0, sizeof(buffer));
+	}
+	// close handlers 
+	CloseHandle(read_pipe);
+	CloseHandle(process_info.hProcess);
+	CloseHandle(process_info.hThread);
+
+	// parsing output string 
+	string line, serial_number;
+	stringstream lines(output);
+
+	while (getline(lines, line, '\n')) {
+		line = rtrim(line).c_str();							// remove right white space 
+		if ((idx = line.find(title)) == -1) continue;		// filtering unused lines 
+		serial_number = line.substr(idx + title.length());	// extract serial number from MainWindowTitle
+		if (serial_number.length() == 0) continue;			// filtering empty serial number 
+		serial_number = serial_number.substr(3);			// get serial number ( 5 charaters )
+		if (serial_number.compare(device_serial) == 0)		// compare selected device serial number 
+			return true;
+	}
+	return false; // not used selected device serial number 
 }
