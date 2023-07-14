@@ -17,7 +17,7 @@ using namespace std;
 
 // Device VID, PID
 #define LS4550EK_VID			0x04D8
-#define LS4550EK_PID			0x0041
+#define LS4550EK_PID			0x0042
 
 // Capacity max device number
 
@@ -151,7 +151,7 @@ public:
 		, ctHex(38.0)
 		, ctRox(38.0)
 		, ctCY5(38.0)
-		, thresholdFam(5.05)
+		, thresholdFam(8.0)
 		, thresholdHex(4.47)
 		, thresholdRox(5.0) // 220221 KBH defulat value
 		, thresholdCY5(4.3)
