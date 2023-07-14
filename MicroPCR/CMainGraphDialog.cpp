@@ -215,13 +215,16 @@ void CMainGraphDialog::initChart() {
 	axis->m_TitleFont.lfHeight = 20;
 
 	//210830 KJD Setting Axis and m_Chart
-	axis->SetRange(-200, 4096);
-	axis->SetTickCount(5);
+	//axis->SetRange(-200, 4096);
+	axis->SetRange(-3000, 65536);
+	axis->SetTickCount(7);
 	axis->m_ytickPos[0] = 0;
-	axis->m_ytickPos[1] = 1000;
-	axis->m_ytickPos[2] = 2000;
-	axis->m_ytickPos[3] = 3000;
-	axis->m_ytickPos[4] = 4000;
+	axis->m_ytickPos[1] = 10000;
+	axis->m_ytickPos[2] = 20000;
+	axis->m_ytickPos[3] = 30000;
+	axis->m_ytickPos[4] = 40000;
+	axis->m_ytickPos[5] = 50000;
+	axis->m_ytickPos[6] = 60000;
 
 	m_Chart.m_UseMajorVerticalGrids = TRUE;
 	m_Chart.m_UseMajorHorizontalGrids = TRUE;
@@ -618,15 +621,17 @@ void CMainGraphDialog::OnBnClickedButtonStart()
 			// Enable stop button
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow(TRUE);
 			serverProcess.SetIndicatorLED(CMD_LED_RUN); // KBH230629 Device Indicator LED Running
-
+			FileManager::log(L"[INFO]\tStart PCR Protocol", usbSerial);
 		}
 		else {
+			FileManager::log(L"[INFO]\tStop PCR Protocol", usbSerial);
 			serverProcess.SetIndicatorLED(CMD_LED_READY); // KBH230629 Device Indicator LED Ready
 			PCREndTask();
 		}
 	}
 	else {
-		AfxMessageBox(L"Error occured!");
+		AfxMessageBox(L"Software error occured!");
+		FileManager::log(L"[ERROR]\tSoftware error occured!(clicked start or stop button)", usbSerial);
 	}
 }
 
@@ -764,6 +769,29 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		values.Format(L"%6d	%8.0f	%3.1f\n", recordingCount, currentTime, currentTemp);
 		m_recFile.WriteString(values);
 	}
+	
+	// KBH230712 ServerProcess Update Status
+	bool update_result = serverProcess.UpdateStatus();
+	int error_code = serverProcess.GetErrorCode();
+	
+	if ((update_result || error_code) && onceShow) {
+		onceShow = false;
+
+		CString error_message;
+		
+		if (error_code >= 0x10) // Fatal error
+			error_message = L"Software error occured!\nPlease contact to developer";
+		else					// connection error
+			error_message = L"Device connect error occured!\nPlease reconnect device";
+		
+		AfxMessageBox(error_message);
+		disconnectDevice();
+		error_message = L"[ERROR]\t" + (CString)serverProcess.GetErrorMessage().c_str();
+		FileManager::log(error_message, usbSerial);
+		if (isStarted)
+			PCREndTask();
+		onceShow = true;
+	}
 
 	return FALSE;
 }
@@ -790,6 +818,10 @@ void CMainGraphDialog::findPID()
 	m_kp = pids[paramIdx].kp;
 	m_ki = pids[paramIdx].ki;
 	m_kd = pids[paramIdx].kd;
+	CString log_message = L"[DEBUG]\tPrev Target Temperature : %02d.0, Current Target Temperature : %02d.0, ";
+	log_message += L"Kp : %03.4f, Ki : %0.4f, Kd : %04.4f";
+	log_message.Format(log_message, m_prevTargetTemp, m_currentTargetTemp, m_kp, m_ki, m_kd);
+	FileManager::log(log_message, usbSerial);
 }
 
 void CMainGraphDialog::initValues() {
@@ -939,7 +971,7 @@ void CMainGraphDialog::timeTask() {
 						//// Getting the photodiode data
 						// double lights = (double)(photodiode_h & 0x0f) * 256. + (double)(photodiode_l);
 
-						double lights = serverProcess.UpdateStatus();
+						double lights = serverProcess.GetIntensity();
 						if (lights != -1)
 						{
 							sensorValues->push_back(lights);
@@ -1150,6 +1182,7 @@ void CMainGraphDialog::setChartValue() {
 			vector<double> values = sensorValues[idx];
 			vector<double> copyValues = copySensorValues[idx];
 			double meanValues = 0.0;
+
 			if (values.size() < 16) {
 				double sumValues = std::accumulate(values.begin(), values.end(), 0.0);
 				meanValues = sumValues / values.size();
@@ -1451,13 +1484,13 @@ BOOL CMainGraphDialog::OnDeviceChange(UINT nEventType, DWORD dwData)
 			if (timerBlocked) {
 				timerBlocked = false;
 				m_Timer->startTimer(TIMER_DURATION, FALSE);
-				FileManager::log(L"USB Connected", usbSerial);
+				FileManager::log(L"[ERROR]\tUSB Connected", usbSerial);
 			}
 		}
 		else if (!timerBlocked) {
 			timerBlocked = true;
 			m_Timer->stopTimer();
-			FileManager::log(L"USB Disconnected", usbSerial);
+			FileManager::log(L"[ERROR]\tUSB Disconnected", usbSerial);
 		}
 	}
 	else {
@@ -1494,8 +1527,19 @@ void CMainGraphDialog::connectDevice()
 
 		if (!device->OpenDevice(LS4550EK_VID, LS4550EK_PID, serial_buffer, TRUE)) {
 			AfxMessageBox(L"PCR is failed to connect(Unknown error).");
+			FileManager::log(L"[ERROR]\tPCR is failed to connect(Unknown error)", usbSerial);
 			return;
 		}
+
+		// Process Start HelloPCR-Runner.exe 
+		if (serverProcess.StartProcess(usbSerial)) {
+			AfxMessageBox(L"Software error occured!\nPlease contact to developer");
+			return;
+		}
+
+		// KBH230623 Start Timer when device connected
+		timerBlocked = false;
+		m_Timer->startTimer(TIMER_DURATION, FALSE);
 
 		prevTitle.Format(L"%s - %s", prevTitle, device_serial);
 		SetWindowText(prevTitle);
@@ -1506,18 +1550,10 @@ void CMainGraphDialog::connectDevice()
 		SetDlgItemText(IDC_EDIT_CONNECTI_STATUS, L"Connected");
 		SetDlgItemText(IDC_BUTTON_CONNECT, L"Disconnect");
 		GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow(FALSE);
-
+		FileManager::log(L"[INFO]\tDevice Connected", usbSerial);
 		if (isProtocolLoaded) {
 			GetDlgItem(IDC_BUTTON_START)->EnableWindow();
 		}
-
-		// Process Start HelloPCR-Runner.exe 
-		serverProcess.StartProcess(usbSerial);
-		serverProcess.SetIndicatorLED(CMD_LED_READY);
-
-		// KBH230623 Start Timer when device connected
-		timerBlocked = false;
-		m_Timer->startTimer(TIMER_DURATION, FALSE);
 	}
 	else {
 		AfxMessageBox(L"Please select the device first.");
@@ -1527,7 +1563,12 @@ void CMainGraphDialog::disconnectDevice()
 {
 	isConnected = false;
 
+	m_Timer->stopTimer();
+
 	device->CloseDevice();
+
+	// Process Stop HelloPCR-Runner.exe 
+	serverProcess.StopProcess();
 
 	CString prevTitle;
 	GetWindowText(prevTitle);
@@ -1539,12 +1580,9 @@ void CMainGraphDialog::disconnectDevice()
 	GetDlgItem(IDC_COMBO_DEVICE_LIST)->EnableWindow();
 	GetDlgItem(IDC_BUTTON_START)->EnableWindow(FALSE);
 
+	FileManager::log(L"[INFO]\tDevice Disconnected", usbSerial);
 	// KBH230623 Stop Timer when device disconnected
 	timerBlocked = false;
-	m_Timer->stopTimer();
-
-	// Process Stop HelloPCR-Runner.exe 
-	serverProcess.StopProcess();
 }
 
 // trim from right 

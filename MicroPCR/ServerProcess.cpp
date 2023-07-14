@@ -1,23 +1,167 @@
 #pragma once
 #include "stdafx.h"
 #include "ServerProcess.h"
+#include "FileManager.h"
 
+using namespace std;
 ServerProcess::ServerProcess()
 {
-	port = 0;
+	_port = 0;
 	memset(&rx_packet, 0, sizeof(RX_PACKET));
 	memset(&tx_packet, 0, sizeof(TX_PACKET));
+
+	int result = WSAStartup(MAKEWORD(2, 2), &_wsdata);
+}
+ServerProcess::~ServerProcess()
+{
+	Disconnect();
+	WSACleanup();
+}
+bool ServerProcess::FindPort()
+{
+	_port = 0;
+	_socket = socket(AF_INET, SOCK_STREAM, 0);
+	socklen_t len = sizeof(_sockaddr);
+
+	ZeroMemory(&_sockaddr, sizeof(_sockaddr)); // initialize structure
+	_sockaddr.sin_family = AF_INET;
+	_sockaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // set host ip address
+
+	_sockaddr.sin_port = htons(_port); // set port 
+	bool result = bind(_socket, (SOCKADDR*)&_sockaddr, sizeof(_sockaddr));
+
+	getsockname(_socket, (SOCKADDR*)&_sockaddr, &len);
+	_port = ntohs(_sockaddr.sin_port);
+	closesocket(_socket);
+
+	return result;
+}
+bool ServerProcess::Connect()
+{
+	if (_port == 0) return true;
+	_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+	ZeroMemory(&_sockaddr, sizeof(_sockaddr)); // initialize structure
+	_sockaddr.sin_family = AF_INET;
+	_sockaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // set host ip address
+	_sockaddr.sin_port = htons(_port); // set port 
+
+	if (connect(_socket, (SOCKADDR*)&_sockaddr, sizeof(_sockaddr)) == -1) return true;
+	
+	// set socket keep alive 
+	bool opt_val = TRUE;
+	if (setsockopt(_socket, SOL_SOCKET, SO_KEEPALIVE, (const char*)&opt_val, sizeof(char)) == -1) return true;
+	
+	// set Timeout 2000ms 
+	int timeout_val = 2000; 
+	if (setsockopt(_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_val, sizeof(int)) == -1) return true;
+	if (setsockopt(_socket, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_val, sizeof(int)) == -1) return true;
+	
+	return false;
 }
 
-void ServerProcess::FindUnusedPort()
+void ServerProcess::Disconnect()
 {
-	UINT UINT_PORT;	CString temp; CSocket socket;
-	if (!AfxSocketInit()) return;
-	if (!socket.Create()) return;
-	socket.GetSockName((CString&)temp, (UINT&)UINT_PORT);
-	socket.Close();
-	port = (int)UINT_PORT;
+	if (_socket != NULL) {
+		closesocket(_socket);
+		_socket = NULL;
+	}
+	_port = 0;
 }
+
+bool ServerProcess::Send()
+{
+	if (_port == 0) return true;
+	int result = send(_socket, (const char*)&tx_packet, BUF_SIZE, 0);
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	return result == -1;
+}
+
+bool ServerProcess::Recv()
+{
+	if (_port == 0) return true;
+	memset(&rx_packet, 0, sizeof(Rx_Packet));
+	int result = recv(_socket, (char*)&rx_packet, BUF_SIZE, 0);
+	return result == -1;
+}
+
+bool ServerProcess::Shot(int filter_index, int current_cycle, CString experiment_date)
+{
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	tx_packet.Command = CMD_SHOT;
+	tx_packet.FilterIndex = filter_index;
+	tx_packet.CurrentCycle = current_cycle;
+	strcpy(tx_packet.ExperimentDate, ((string)CT2A(experiment_date)).c_str());
+	return Send();
+}
+
+bool ServerProcess::UpdateStatus()
+{
+	bool result_send, result_recv;
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	tx_packet.Command = CMD_STATUS;
+	result_send = Send();
+	result_recv = Recv();
+	return result_send || result_recv;
+}
+
+bool ServerProcess::SetIndicatorLED(Command command)
+{
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	tx_packet.Command = command;
+	return Send();
+}
+
+int ServerProcess::GetIntensity()
+{
+	int intensity;
+	memcpy(&intensity, &rx_packet.Intensity_1, sizeof(int));
+	return intensity;
+}
+
+int ServerProcess::GetErrorCode()
+{
+	return rx_packet.code;
+}
+
+string ServerProcess::GetErrorMessage()
+{
+	return string(rx_packet.message);
+}
+bool ServerProcess::StartProcess(long serial_number)
+{
+	int mode = SW_HIDE;
+
+	if (FindPort() == -1) {
+		FileManager::log(L"[ERROR] Find unused TCP port", serial_number);
+		return true;
+	}
+
+	CString arguments;
+	arguments.Format(L"-p %d %05ld", _port, serial_number);
+
+#ifdef EMULATOR
+	mode = SW_SHOW;
+	arguments.Format(L"-E -p %d %05ld", port, serial_number);
+#endif
+	
+	ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe", arguments, NULL, mode);
+	if (Connect()) {
+		FileManager::log(L"[ERROR] Server Connect Failed", serial_number);
+		return true;
+	}
+	return false;
+	
+}
+
+void ServerProcess::StopProcess()
+{
+	memset(&tx_packet, 0, sizeof(Tx_Packet));
+	tx_packet.Command = CMD_EXIT;
+	Send();
+	Disconnect();
+}
+
 
 string ServerProcess::CStringToUTF8(CString cstr)
 {
@@ -31,87 +175,4 @@ string ServerProcess::CStringToUTF8(CString cstr)
 	WideCharToMultiByte(CP_UTF8, 0, cstr, -1, &utf8Str[0], utf8Length, nullptr, nullptr);
 
 	return utf8Str;
-}
-
-Rx_Packet ServerProcess::TCP_xfer(Tx_Packet tx_packet)
-{
-	int bytes = 0;
-	memset(&rx_packet, 0, sizeof(RX_PACKET));
-	if (!AfxSocketInit())
-	{
-		AfxMessageBox(L"Socket initialize failed...");
-		return rx_packet;
-	}
-
-	CSocket socket;
-	if (!socket.Create())
-	{
-		AfxMessageBox(L"Socket Create failed...");
-		return rx_packet;
-	}
-
-	if (!socket.Connect((const wchar_t*)HOST, port))
-	{
-		AfxMessageBox(L"Socket Connect failed...");
-		return rx_packet;
-	}
-
-
-	bytes = socket.Send((Tx_Packet*)&tx_packet, sizeof(Tx_Packet));
-	bytes = socket.Receive((Rx_Packet*)&rx_packet, sizeof(Rx_Packet));
-
-	socket.Close();
-	return rx_packet;
-}
-
-int ServerProcess::Shot(int filter_index, int current_cycle, CString experiment_date)
-{
-	int len;
-	Tx_Packet tx_packet;
-	memset(&tx_packet, 0, sizeof(Tx_Packet));
-	tx_packet.Command = CMD_SHOT;
-	tx_packet.FilterIndex = filter_index;
-	tx_packet.CurrentCycle = current_cycle;
-	strcpy(tx_packet.ExperimentDate, CStringToUTF8(experiment_date).c_str());
-
-	Rx_Packet rx_packet = TCP_xfer(tx_packet);
-	return rx_packet.Intensity;
-}
-
-int ServerProcess::Status()
-{
-	Tx_Packet tx_packet;
-	memset(&tx_packet, 0, sizeof(Tx_Packet));
-	tx_packet.Command = CMD_STATUS;
-	Rx_Packet rx_packet = TCP_xfer(tx_packet);
-	return rx_packet.Intensity;
-}
-
-void ServerProcess::SetIndicatorLED(Command command)
-{
-	Tx_Packet tx_packet;
-	memset(&tx_packet, 0, sizeof(Tx_Packet));
-	tx_packet.Command = command;
-	Rx_Packet rx_packet = TCP_xfer(tx_packet);
-}
-
-void ServerProcess::StartProcess(long serial_number)
-{
-	int mode = SW_HIDE;
-	FindUnusedPort();
-	CString arguments;
-	arguments.Format(L"-p %d %05ld", port, serial_number);
-#ifdef EMULATOR
-	mode = SW_SHOW;
-	arguments.Format(L"-E -p %d %05ld", port, serial_number);
-#endif
-	ShellExecute(NULL, L"open", L"HelloPCR-Runner.exe", arguments, NULL, SW_SHOW);
-}
-
-void ServerProcess::StopProcess()
-{
-	Tx_Packet tx_packet;
-	memset(&tx_packet, 0, sizeof(Tx_Packet));
-	tx_packet.Command = CMD_EXIT;
-	Rx_Packet rx_packet = TCP_xfer(tx_packet);
 }

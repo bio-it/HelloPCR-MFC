@@ -39,7 +39,7 @@ using namespace std;
 
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
-
+#pragma comment(lib, "ws2_32.lib")
 #include <math.h>
 
 
