@@ -786,7 +786,7 @@ LRESULT CMainGraphDialog::OnmmTimer(WPARAM wParam, LPARAM lParam) {
 		
 		AfxMessageBox(error_message);
 		disconnectDevice();
-		error_message = L"[ERROR]\t" + (CString)serverProcess.GetErrorMessage().c_str();
+		error_message.Format(L"[ERROR]\t%s", (CString)serverProcess.GetErrorMessage().c_str());
 		FileManager::log(error_message, usbSerial);
 		if (isStarted)
 			PCREndTask();
@@ -818,9 +818,8 @@ void CMainGraphDialog::findPID()
 	m_kp = pids[paramIdx].kp;
 	m_ki = pids[paramIdx].ki;
 	m_kd = pids[paramIdx].kd;
-	CString log_message = L"[DEBUG]\tPrev Target Temperature : %02d.0, Current Target Temperature : %02d.0, ";
-	log_message += L"Kp : %03.4f, Ki : %0.4f, Kd : %04.4f";
-	log_message.Format(log_message, m_prevTargetTemp, m_currentTargetTemp, m_kp, m_ki, m_kd);
+	CString log_message;
+	log_message.Format(L"[DEBUG]\tPrev Target Temperature : %02d.0, Current Target Temperature : %02d.0, Kp : %03.4f, Ki : %0.4f, Kd : %04.4f", m_prevTargetTemp, m_currentTargetTemp, m_kp, m_ki, m_kd);
 	FileManager::log(log_message, usbSerial);
 }
 
