@@ -1303,8 +1303,8 @@ void CMainGraphDialog::setCTValue(CString dateTime, vector<double>& sensorValue,
 		float logThreshold = log(threshold);
 		float ct;
 
-		// Getting the log threshold from file
-		float tempLogThreshold = FileManager::getFilterValue(filterIndex);
+		// 230803 KBH : Get CT threshold value from protocol
+		float tempLogThreshold = filterThreshold[filterIndex];
 
 		// Success to load
 		if (tempLogThreshold > 0.0) {
